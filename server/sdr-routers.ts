@@ -49,26 +49,41 @@ export const deviceRouter = router({
   updateConfig: protectedProcedure
     .input(
       z.object({
-        centerFrequency: z.string(),
-        sampleRate: z.string(),
-        gain: z.number(),
+        centerFrequency: z.string().optional(),
+        sampleRate: z.string().optional(),
+        gain: z.number().optional(),
         lnaGain: z.number().optional(),
         tiaGain: z.number().optional(),
         pgaGain: z.number().optional(),
-        agcMode: z.enum(["auto", "manual"]),
-        dcOffsetCorrection: z.enum(["enabled", "disabled"]),
-        iqBalanceCorrection: z.enum(["enabled", "disabled"]),
+        agcMode: z.enum(["auto", "manual"]).optional(),
+        dcOffsetCorrection: z.enum(["enabled", "disabled"]).optional(),
+        iqBalanceCorrection: z.enum(["enabled", "disabled"]).optional(),
         masterClockRate: z.string().optional(),
         clockSource: z.string().optional(),
         antenna: z.string().optional(),
         fftSize: z.number().optional(),
         windowFunction: z.string().optional(),
+        colorMap: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Get existing config
+      const existing = await getDeviceConfig(ctx.user.id);
+      
+      // Merge with defaults if no existing config
+      const defaults = {
+        centerFrequency: "915.0",
+        sampleRate: "10.0",
+        gain: 50,
+        agcMode: "manual" as const,
+        dcOffsetCorrection: "enabled" as const,
+        iqBalanceCorrection: "enabled" as const,
+      };
+      
       const config = await upsertDeviceConfig({
         userId: ctx.user.id,
         name: "Current Configuration",
+        ...(existing || defaults),
         ...input,
       });
 

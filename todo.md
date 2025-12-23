@@ -174,6 +174,9 @@
 - [x] Fix WebSocket rapid reconnection issue during hot reloads
 - [x] Improve WebSocket cleanup on component unmount
 - [x] Add connection debouncing to prevent reconnection churn
+- [x] Fix infinite reconnection loop from stale closure in connect callback
+- [x] Fix race condition in live data updates with functional state updates
+- [x] Wire reconnect interval from diagnostics panel to actual WebSocket behavior
 
 ## WebSocket Enhancements
 - [x] Connection status indicator in top navigation (Connected/Reconnecting/Disconnected)
@@ -188,3 +191,17 @@
 - [x] Configurable connection timeout
 - [x] Manual reconnect button
 - [x] Connection diagnostics (latency, packet loss, throughput)
+
+## Advanced Visualization Features
+- [x] Waterfall color map preset dropdown (Viridis, Plasma, Inferno, Grayscale, Hot/Cold)
+- [x] Custom RGB gradient editor for waterfall
+- [x] Color map persistence in device config
+- [x] Signal detection markers on spectrograph
+- [x] Adjustable peak detection threshold
+- [x] Frequency markers with power level labels
+- [x] Click-to-tune functionality on detected signals
+- [ ] Frequency scan mode configuration panel
+- [ ] Scan sweep parameters (start/stop frequency, step size, dwell time)
+- [ ] Automated scanning with pause-on-signal detection
+- [ ] Scan results table with timestamps and power levels
+- [ ] Export scan results to CSV/JSON

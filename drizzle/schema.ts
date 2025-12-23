@@ -46,6 +46,7 @@ export const deviceConfigs = mysqlTable("device_configs", {
   antenna: varchar("antenna", { length: 50 }),
   fftSize: int("fft_size").default(2048),
   windowFunction: varchar("window_function", { length: 50 }).default("hann"),
+  colorMap: varchar("color_map", { length: 100 }).default("Cyberpunk (Default)"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });

@@ -7,11 +7,10 @@ import { RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function WebSocketDiagnostics() {
-  const { isConnected, error, fftHistory } = useWebSocket();
+  const { isConnected, error, fftHistory, reconnectInterval, setReconnectInterval } = useWebSocket();
   const [latency, setLatency] = useState<number | null>(null);
   const [throughput, setThroughput] = useState<number>(0);
   const [droppedFrames, setDroppedFrames] = useState(0);
-  const [reconnectInterval, setReconnectInterval] = useState(3000);
   const [maxRetries, setMaxRetries] = useState(10);
   const [connectionTimeout, setConnectionTimeout] = useState(5000);
 

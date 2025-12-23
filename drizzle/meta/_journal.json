@@ -15,6 +15,13 @@
       "when": 1766504849723,
       "tag": "0001_hesitant_hemingway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1766511303314,
+      "tag": "0002_brown_maestro",
+      "breakpoints": true
     }
   ]
 }

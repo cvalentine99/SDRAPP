@@ -18,6 +18,8 @@ interface UseWebSocketReturn {
   historyIndex: number;
   setHistoryIndex: (index: number) => void;
   isPlayingHistory: boolean;
+  reconnectInterval: number;
+  setReconnectInterval: (interval: number) => void;
 }
 
 const FFT_HISTORY_SIZE = 100;
@@ -28,6 +30,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const [error, setError] = useState<string | null>(null);
   const [fftHistory, setFFTHistory] = useState<FFTData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1); // -1 = live mode
+  const [reconnectInterval, setReconnectInterval] = useState(3000); // Configurable
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSubscribedRef = useRef(false);
@@ -65,10 +68,13 @@ export function useWebSocket(): UseWebSocketReturn {
             return newHistory;
           });
           
-          // Only update live data if not viewing history
-          if (historyIndex === -1) {
-            setFFTData(data);
-          }
+          // Only update live data if not viewing history (use functional update to avoid stale closure)
+          setHistoryIndex((currentIndex) => {
+            if (currentIndex === -1) {
+              setFFTData(data);
+            }
+            return currentIndex;
+          });
         } catch (err) {
           console.error("[WebSocket] Error parsing message:", err);
         }
@@ -89,7 +95,7 @@ export function useWebSocket(): UseWebSocketReturn {
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log("[WebSocket] Attempting to reconnect...");
             connect();
-          }, 3000);
+          }, reconnectInterval);
         }
       };
 
@@ -156,5 +162,7 @@ export function useWebSocket(): UseWebSocketReturn {
     historyIndex,
     setHistoryIndex,
     isPlayingHistory: historyIndex >= 0,
+    reconnectInterval,
+    setReconnectInterval,
   };
 }

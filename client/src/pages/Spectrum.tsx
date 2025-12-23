@@ -13,16 +13,40 @@ import {
 import { Pause, Play, Radio, SkipBack, SkipForward } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
-import { SpectrographDisplay } from "@/components/SpectrographDisplay";
+import { SpectrographDisplayWithDetection } from "@/components/SpectrographDisplayWithDetection";
 import { BookmarkPanel } from "@/components/BookmarkPanel";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useFrequencyDrag } from "@/hooks/useFrequencyDrag";
 import { trpc } from "@/lib/trpc";
+import { COLOR_MAP_PRESETS, colorMapToGradient, type ColorMap } from "@/lib/colorMaps";
+import { GradientEditor } from "@/components/GradientEditor";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
+  const [selectedColorMap, setSelectedColorMap] = useState("Cyberpunk (Default)");
+  const [customColorMaps, setCustomColorMaps] = useState<ColorMap[]>([]);
+  const [detectionThreshold, setDetectionThreshold] = useState([-60]);
+  const allColorMaps = [...COLOR_MAP_PRESETS, ...customColorMaps];
+
+  // Persist color map selection
+  const updateColorMap = trpc.device.updateConfig.useMutation({
+    onSuccess: () => {
+      deviceConfig.refetch();
+    },
+  });
+
+  const handleColorMapChange = (colorMapName: string) => {
+    setSelectedColorMap(colorMapName);
+    updateColorMap.mutate({ colorMap: colorMapName });
+  };
+
+  const handleSaveCustomGradient = (colorMap: ColorMap) => {
+    setCustomColorMaps([...customColorMaps, colorMap]);
+    setSelectedColorMap(colorMap.name);
+    updateColorMap.mutate({ colorMap: colorMap.name });
+  };
 
   const { isDragging, handleMouseDown } = useFrequencyDrag({
     initialValue: parseFloat(frequency) || 915.0,
@@ -43,6 +67,14 @@ export default function Spectrum() {
   } = useWebSocket();
   const deviceConfig = trpc.device.getConfig.useQuery();
   const updateConfig = trpc.device.updateConfig.useMutation();
+
+   // Get current FFT data (from history if scrubbing, otherwise live)
+  const currentFFT = isPlayingHistory && historyIndex !== null && fftHistory[historyIndex]
+    ? fftHistory[historyIndex]
+    : fftData;
+  
+  // Convert to Float64Array for spectrograph
+  const currentFFTData = currentFFT ? new Float64Array(currentFFT.data) : null;
 
   // Subscribe to FFT stream when running
   useEffect(() => {
@@ -140,7 +172,16 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-3.5rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-primary/30 overflow-hidden">
-              <SpectrographDisplay width={1024} height={150} fftSize={2048} />
+            <SpectrographDisplayWithDetection 
+          fftData={currentFFTData}
+          detectionThreshold={detectionThreshold[0]}
+          centerFrequency={parseFloat(frequency) || 915.0}
+          sampleRate={10.0}
+          onPeakClick={(freq, power) => {
+            handleFrequencyChange(freq.toString());
+            console.log(`Tuned to detected signal: ${freq.toFixed(3)} MHz (${power.toFixed(1)} dBm)`);
+          }}
+        />
             </div>
           </CardContent>
         </Card>
@@ -416,6 +457,70 @@ export default function Spectrum() {
                   <SelectItem value="rectangular">Rectangular</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="colormap" className="text-xs text-muted-foreground">
+                Color Map
+              </Label>
+              <Select 
+                value={selectedColorMap} 
+                onValueChange={handleColorMapChange}
+              >
+                <SelectTrigger id="colormap" className="bg-input border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {allColorMaps.map((preset) => (
+                    <SelectItem key={preset.name} value={preset.name}>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-12 h-3 rounded border border-border"
+                          style={{ background: colorMapToGradient(preset) }}
+                        />
+                        {preset.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Color Map Preview */}
+              <div 
+                className="w-full h-6 rounded border border-border"
+                style={{ 
+                  background: colorMapToGradient(
+                    allColorMaps.find(p => p.name === selectedColorMap) || COLOR_MAP_PRESETS[5]
+                  )
+                }}
+              />
+              
+              {/* Custom Gradient Editor */}
+              <GradientEditor onSave={handleSaveCustomGradient} />
+            </div>
+
+            {/* Signal Detection */}
+            <div className="space-y-2 pt-4 border-t border-border">
+              <Label htmlFor="detection-threshold" className="text-xs text-muted-foreground">
+                Detection Threshold
+              </Label>
+              <div className="flex items-center gap-3">
+                <Slider
+                  id="detection-threshold"
+                  value={detectionThreshold}
+                  onValueChange={setDetectionThreshold}
+                  min={-100}
+                  max={0}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-xs text-primary font-mono w-16 text-right">
+                  {detectionThreshold[0]} dBm
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground/70">
+                Signals above this threshold will be marked on the spectrograph. Click markers to tune.
+              </p>
             </div>
           </CardContent>
         </Card>
