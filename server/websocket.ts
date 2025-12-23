@@ -16,7 +16,6 @@ export function initializeWebSocket(server: Server) {
   wss = new WebSocketServer({ server, path: "/api/ws" });
 
   wss.on("connection", (ws: WebSocket) => {
-    console.log("[WebSocket] Client connected");
 
     ws.on("message", (message: Buffer) => {
       try {
@@ -24,10 +23,8 @@ export function initializeWebSocket(server: Server) {
         
         // Handle client commands
         if (data.type === "subscribe") {
-          console.log("[WebSocket] Client subscribed to FFT stream");
           subscribeClient(ws);
         } else if (data.type === "unsubscribe") {
-          console.log("[WebSocket] Client unsubscribed from FFT stream");
           unsubscribeClient(ws);
         }
       } catch (error) {
@@ -36,7 +33,6 @@ export function initializeWebSocket(server: Server) {
     });
 
     ws.on("close", () => {
-      console.log("[WebSocket] Client disconnected");
       unsubscribeClient(ws);
     });
 
@@ -44,8 +40,6 @@ export function initializeWebSocket(server: Server) {
       console.error("[WebSocket] Error:", error);
     });
   });
-
-  console.log("[WebSocket] Server initialized on /api/ws");
 }
 
 // Client subscription management

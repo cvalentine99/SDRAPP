@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { Pause, Play, Radio, SkipBack, SkipForward } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDebouncedCallback } from "use-debounce";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { SpectrographDisplayWithDetection } from "@/components/SpectrographDisplayWithDetection";
 
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -158,7 +160,9 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-4rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-secondary/30 relative overflow-hidden">
-              <WaterfallDisplay width={1024} height={512} fftSize={2048} />
+              <ErrorBoundary>
+                <WaterfallDisplay width={1024} height={512} fftSize={2048} />
+              </ErrorBoundary>
               {/* HUD Corners */}
               <div className="absolute top-2 left-2 w-8 h-8 border-l-2 border-t-2 border-secondary/50 pointer-events-none" />
               <div className="absolute top-2 right-2 w-8 h-8 border-r-2 border-t-2 border-secondary/50 pointer-events-none" />
@@ -179,16 +183,20 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-3.5rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-primary/30 overflow-hidden">
-            <SpectrographDisplayWithDetection 
-          fftData={currentFFTData}
-          detectionThreshold={detectionThreshold[0]}
-          centerFrequency={parseFloat(frequency) || 915.0}
-          sampleRate={10.0}
-          onPeakClick={(freq, power) => {
-            handleFrequencyChange(freq.toString());
-            console.log(`Tuned to detected signal: ${freq.toFixed(3)} MHz (${power.toFixed(1)} dBm)`);
-          }}
-        />
+        <ErrorBoundary>
+          <SpectrographDisplayWithDetection
+            fftData={currentFFTData}
+            detectionThreshold={detectionThreshold[0]}
+            centerFrequency={parseFloat(frequency) || 915.0}
+            sampleRate={10.0}
+            onPeakClick={(freq, power) => {
+              handleFrequencyChange(freq.toFixed(3));
+              toast.success(
+                `Tuned to detected signal: ${freq.toFixed(3)} MHz (${power.toFixed(1)} dBm)`
+              );
+            }}
+          />
+        </ErrorBoundary>
             </div>
           </CardContent>
         </Card>

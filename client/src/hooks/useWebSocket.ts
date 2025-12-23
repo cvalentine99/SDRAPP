@@ -47,7 +47,6 @@ export function useWebSocket(): UseWebSocketReturn {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log("[WebSocket] Connected");
         setIsConnected(true);
         setError(null);
         setReconnectAttempts(0); // Reset backoff on successful connection
@@ -89,7 +88,6 @@ export function useWebSocket(): UseWebSocketReturn {
       };
 
       ws.onclose = () => {
-        console.log("[WebSocket] Disconnected");
         setIsConnected(false);
         wsRef.current = null;
 
@@ -101,7 +99,6 @@ export function useWebSocket(): UseWebSocketReturn {
           const delay = backoff + jitter;
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log(`[WebSocket] Attempting to reconnect (attempt ${reconnectAttempts + 1}, delay ${Math.round(delay)}ms)...`);
             setReconnectAttempts(prev => prev + 1);
             connect();
           }, delay);

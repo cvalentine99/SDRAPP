@@ -368,3 +368,10 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Add exponential backoff with jitter to WebSocket reconnection
 - [x] Fix division by zero in IQ analysis (sdr-routers.ts:547)
 
+
+### P3 - Minor Polish/Maintainability
+- [x] Remove console.logs from production code (websocket.ts, Spectrum.tsx, useWebSocket.ts)
+- [x] Extract magic numbers to named constants (WaterfallDisplay.tsx)
+- [x] Remove unused imports and variables (fftDataRef, yOffset removed; HardDrive is used)
+- [x] Add Error Boundaries to visualization components (WaterfallDisplay, SpectrographDisplayWithDetection)
+

@@ -6,18 +6,26 @@ interface WaterfallDisplayProps {
   fftSize?: number;
 }
 
+// Simulation constants
+const NOISE_FLOOR = 30;
+const SIGNAL_1_FREQ = 0.3;
+const SIGNAL_1_WIDTH = 0.02;
+const SIGNAL_1_POWER = 150;
+const SIGNAL_2_FREQ = 0.6;
+const SIGNAL_2_WIDTH = 0.01;
+const SIGNAL_2_POWER = 200;
+const SIGNAL_3_FREQ = 0.75;
+const SIGNAL_3_WIDTH = 0.015;
+const SIGNAL_3_POWER = 100;
+const MAX_FFT_VALUE = 255;
+
 export function WaterfallDisplay({
   width = 1024,
   height = 512,
-  fftSize = 2048,
+  fftSize = 1024,
 }: WaterfallDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const glRef = useRef<WebGLRenderingContext | null>(null);
-  const programRef = useRef<WebGLProgram | null>(null);
-  const textureRef = useRef<WebGLTexture | null>(null);
-  const [yOffset, setYOffset] = useState(0);
   const animationFrameRef = useRef<number | undefined>(undefined);
-  const fftDataRef = useRef<Uint8Array | null>(null); // Hold latest FFT data without triggering re-render
 
   // Initialize WebGL context and shaders
   useEffect(() => {
@@ -35,7 +43,7 @@ export function WaterfallDisplay({
       return;
     }
 
-    glRef.current = gl;
+    // gl context stored in closure
 
     // Vertex shader for full-screen quad with circular scrolling
     const vertexShaderSource = `
@@ -114,7 +122,7 @@ export function WaterfallDisplay({
       return;
     }
 
-    programRef.current = program;
+    // program stored in closure
     gl.useProgram(program);
 
     // Create full-screen quad
@@ -144,7 +152,7 @@ export function WaterfallDisplay({
 
     // Create circular buffer texture
     const texture = gl.createTexture();
-    textureRef.current = texture;
+    // texture stored in closure
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
     // Set texture parameters for circular scrolling
@@ -177,14 +185,14 @@ export function WaterfallDisplay({
       for (let i = 0; i < fftSize; i++) {
         // Simulate some peaks and noise
         const freq = i / fftSize;
-        let value = Math.random() * 30; // Noise floor
+        let value = Math.random() * NOISE_FLOOR;
 
         // Add some simulated signals
-        if (Math.abs(freq - 0.3) < 0.02) value += 150; // Signal at 30%
-        if (Math.abs(freq - 0.6) < 0.01) value += 200; // Strong signal at 60%
-        if (Math.abs(freq - 0.75) < 0.015) value += 100; // Signal at 75%
+        if (Math.abs(freq - SIGNAL_1_FREQ) < SIGNAL_1_WIDTH) value += SIGNAL_1_POWER;
+        if (Math.abs(freq - SIGNAL_2_FREQ) < SIGNAL_2_WIDTH) value += SIGNAL_2_POWER;
+        if (Math.abs(freq - SIGNAL_3_FREQ) < SIGNAL_3_WIDTH) value += SIGNAL_3_POWER;
 
-        fftData[i] = Math.min(255, value);
+        fftData[i] = Math.min(MAX_FFT_VALUE, value);
       }
 
       // Update one row of the texture (circular buffer technique)
@@ -203,7 +211,6 @@ export function WaterfallDisplay({
 
       // Update Y-offset for scrolling
       currentRow = (currentRow + 1) % height;
-      setYOffset(currentRow / height);
     };
 
     // Render loop
