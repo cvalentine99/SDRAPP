@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Loader2, Minimize2, Maximize2 } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Minimize2, Maximize2, Upload, FileAudio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,7 +23,10 @@ export function FloatingAIChat() {
     },
   ]);
   const [input, setInput] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chatMutation = trpc.ai.chat.useMutation({
     onSuccess: (data) => {
@@ -83,6 +86,71 @@ Provide technical, actionable analysis based on RF engineering principles.`;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setUploadedFile(file);
+    }
+  };
+
+  const analyzeIQMutation = trpc.ai.analyzeIQFile.useMutation({
+    onSuccess: (data) => {
+      if (data.message) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: data.message,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+    },
+  });
+
+  const handleFileUpload = async () => {
+    if (!uploadedFile) return;
+
+    setIsUploading(true);
+    try {
+      // Read file as ArrayBuffer
+      const arrayBuffer = await uploadedFile.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+
+      // Send user message
+      const userMessage: Message = {
+        role: "user",
+        content: `Uploaded IQ recording: ${uploadedFile.name} (${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB)`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Call backend IQ analysis
+      analyzeIQMutation.mutate({
+        fileName: uploadedFile.name,
+        fileSize: uploadedFile.size,
+        fileData: base64,
+        // TODO: Extract from SigMF metadata if available
+        sampleRate: 10e6, // Default 10 MSPS
+        centerFrequency: 915e6, // Default 915 MHz
+      });
+
+      setUploadedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("File upload error:", error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -181,24 +249,77 @@ Provide technical, actionable analysis based on RF engineering principles.`;
           </ScrollArea>
 
           {/* Input */}
-          <div className="p-3 border-t border-border">
+          <div className="p-3 border-t border-border space-y-2">
+            {/* File Upload Indicator */}
+            {uploadedFile && (
+              <div className="flex items-center gap-2 p-2 bg-primary/10 border border-primary/30 rounded">
+                <FileAudio className="w-4 h-4 text-primary" />
+                <span className="text-xs flex-1 truncate">{uploadedFile.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUploadedFile(null)}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            )}
+
+            {/* Input Row */}
             <div className="flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask about signals, modulation, interference..."
-                className="flex-1 bg-background/50 border-border"
-                disabled={chatMutation.isPending}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".iq,.sigmf,.wav,.bin,.dat"
+                onChange={handleFileSelect}
+                className="hidden"
               />
               <Button
-                onClick={handleSend}
-                disabled={!input.trim() || chatMutation.isPending}
+                variant="outline"
                 size="sm"
-                className="neon-glow-cyan"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={chatMutation.isPending || isUploading}
+                className="neon-glow-pink"
               >
-                <Send className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
               </Button>
+              {uploadedFile ? (
+                <Button
+                  onClick={handleFileUpload}
+                  disabled={isUploading || chatMutation.isPending}
+                  size="sm"
+                  className="flex-1 neon-glow-cyan"
+                >
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Analyze IQ File"
+                  )}
+                </Button>
+              ) : (
+                <>
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask about signals, modulation, interference..."
+                    className="flex-1 bg-background/50 border-border"
+                    disabled={chatMutation.isPending}
+                  />
+                  <Button
+                    onClick={handleSend}
+                    disabled={!input.trim() || chatMutation.isPending}
+                    size="sm"
+                    className="neon-glow-cyan"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </>

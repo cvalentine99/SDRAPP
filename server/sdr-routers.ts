@@ -244,4 +244,95 @@ export const aiRouter = router({
   history: protectedProcedure.query(async ({ ctx }) => {
     return await getAIConversations(ctx.user.id, 50);
   }),
+
+  analyzeIQFile: protectedProcedure
+    .input(
+      z.object({
+        fileName: z.string(),
+        fileSize: z.number(),
+        fileData: z.string(), // base64 encoded
+        sampleRate: z.number().optional(),
+        centerFrequency: z.number().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Decode base64 to binary
+      const buffer = Buffer.from(input.fileData, "base64");
+      
+      // Parse IQ data (assuming complex float32: IQIQIQ...)
+      const samples = new Float32Array(buffer.buffer);
+      const numSamples = Math.floor(samples.length / 2);
+      
+      // Extract basic signal characteristics
+      let maxPower = -Infinity;
+      let avgPower = 0;
+      for (let i = 0; i < numSamples; i++) {
+        const I = samples[i * 2];
+        const Q = samples[i * 2 + 1];
+        const power = I * I + Q * Q;
+        avgPower += power;
+        if (power > maxPower) maxPower = power;
+      }
+      avgPower /= numSamples;
+      
+      // Convert to dBFS
+      const avgPowerDB = 10 * Math.log10(avgPower + 1e-10);
+      const maxPowerDB = 10 * Math.log10(maxPower + 1e-10);
+      
+      // Estimate bandwidth (simplified - would need FFT for accurate measurement)
+      const estimatedBandwidth = input.sampleRate ? input.sampleRate * 0.8 : undefined;
+      
+      // Build analysis prompt for AI
+      const analysisPrompt = `Analyze this IQ recording file:
+
+File: ${input.fileName}
+Size: ${(input.fileSize / 1024 / 1024).toFixed(2)} MB
+Samples: ${numSamples.toLocaleString()}
+Sample Rate: ${input.sampleRate ? (input.sampleRate / 1e6).toFixed(2) + ' MSPS' : 'Unknown'}
+Center Frequency: ${input.centerFrequency ? (input.centerFrequency / 1e6).toFixed(2) + ' MHz' : 'Unknown'}
+
+Signal Characteristics:
+- Average Power: ${avgPowerDB.toFixed(2)} dBFS
+- Peak Power: ${maxPowerDB.toFixed(2)} dBFS
+- Dynamic Range: ${(maxPowerDB - avgPowerDB).toFixed(2)} dB
+- Estimated Bandwidth: ${estimatedBandwidth ? (estimatedBandwidth / 1e6).toFixed(2) + ' MHz' : 'Unknown'}
+
+Based on these characteristics, provide:
+1. Likely signal type and modulation scheme
+2. Potential interference or anomalies
+3. Recommended analysis techniques
+4. Suggested SDR configuration for live capture`;
+
+      // Get AI analysis
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert RF signal analyst specializing in IQ data forensics and modulation identification.",
+          },
+          { role: "user", content: analysisPrompt },
+        ],
+      });
+
+      const content = response.choices[0]?.message?.content;
+      const analysis = typeof content === 'string' ? content : "Unable to analyze IQ file.";
+
+      // Save analysis to conversation history
+      await createAIConversation({
+        userId: ctx.user.id,
+        role: "assistant",
+        content: analysis,
+      });
+
+      return {
+        message: analysis,
+        characteristics: {
+          numSamples,
+          avgPowerDB: parseFloat(avgPowerDB.toFixed(2)),
+          maxPowerDB: parseFloat(maxPowerDB.toFixed(2)),
+          dynamicRange: parseFloat((maxPowerDB - avgPowerDB).toFixed(2)),
+          estimatedBandwidth,
+        },
+      };
+    }),
 });

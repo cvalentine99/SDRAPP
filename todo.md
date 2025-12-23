@@ -222,3 +222,12 @@
 - [x] Integrate floating chat into SDRLayout for global access
 - [ ] Add conversation persistence to database
 - [ ] Enable spectrum snapshot attachments in chat
+
+## IQ Recording File Analysis (New Feature)
+- [x] File upload UI in FloatingAIChat (file picker)
+- [x] Support for common IQ formats (raw binary, SigMF, WAV)
+- [x] Backend IQ file parsing and validation
+- [x] Signal characteristic extraction (power, dynamic range)
+- [x] AI analysis integration with extracted signal features
+- [x] Upload progress indicator and file size limits
+- [x] Display analysis results with visualizations
