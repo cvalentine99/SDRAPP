@@ -72,13 +72,13 @@
 - [x] Download recorded files
 
 ## WebSocket Data Pipeline
-- [ ] WebSocket client connection management
-- [ ] Binary data streaming handler
-- [ ] Automatic reconnection logic
-- [ ] Backpressure handling
-- [ ] Connection status indicator
-- [ ] Data rate monitoring
-- [ ] Error handling and recovery
+- [x] WebSocket client connection management
+- [x] Binary data streaming handler
+- [x] Automatic reconnection logic
+- [x] Backpressure handling
+- [x] Connection status indicator
+- [x] Data rate monitoring
+- [x] Error handling and recovery
 
 ## Performance Telemetry
 - [x] FFT rate counter display
