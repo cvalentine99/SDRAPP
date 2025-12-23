@@ -250,3 +250,16 @@ Based on actual gx10-alpha hardware specs:
 - [x] Add Settings route to App.tsx
 - [x] Settings accessible via user dropdown menu in navigation
 - [x] Test switching from demo to production and back (verified working)
+
+
+## Phase 1.1: Spectrum WebSocket Integration (Dec 23, 2025)
+
+- [x] Create useWebSocketFFT hook for FFT data streaming
+- [x] Add WebSocket connection management (connect, disconnect, reconnect)
+- [x] Implement exponential backoff for reconnection
+- [x] Update Spectrum.tsx to use real WebSocket FFT data
+- [x] Add connection status indicator (connected/disconnected/reconnecting)
+- [x] Handle mode switching (demo ↔ production) with reconnection
+- [x] Add FPS counter to verify 60 FPS performance
+- [x] Initialize WebSocket server in server/_core/index.ts
+- [x] Test WebSocket connection (verified clients connecting successfully)
