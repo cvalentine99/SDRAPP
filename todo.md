@@ -161,3 +161,11 @@
 - [x] Recording list with download links
 - [x] Delete recording with S3 cleanup
 - [ ] Recording playback/analysis (future enhancement)
+
+## Power User Features (New)
+- [x] Velocity-aware frequency dragging (slow = 0.1 MHz, medium = 1 MHz, fast = 10 MHz)
+- [x] Preset bookmark packs (Amateur Radio, Aviation, ISM, Satellite)
+- [x] Command palette with Cmd/Ctrl+K shortcut
+- [x] Fuzzy search across pages, bookmarks, settings
+- [x] Quick navigation to any page from command palette
+- [x] Bookmark search and quick-tune from command palette

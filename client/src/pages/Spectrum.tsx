@@ -16,12 +16,20 @@ import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
 import { BookmarkPanel } from "@/components/BookmarkPanel";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useFrequencyDrag } from "@/hooks/useFrequencyDrag";
 import { trpc } from "@/lib/trpc";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
+
+  const { isDragging, handleMouseDown } = useFrequencyDrag({
+    initialValue: parseFloat(frequency) || 915.0,
+    onChange: (newFreq) => handleFrequencyChange(newFreq.toString()),
+    min: 70,
+    max: 6000,
+  });
 
   const { fftData, isConnected, subscribe, unsubscribe } = useWebSocket();
   const deviceConfig = trpc.device.getConfig.useQuery();
@@ -145,14 +153,24 @@ export default function Spectrum() {
               <Label htmlFor="frequency" className="text-xs text-muted-foreground">
                 Center Frequency (MHz)
               </Label>
-              <Input
-                id="frequency"
-                type="number"
-                value={frequency}
-                onChange={(e) => handleFrequencyChange(e.target.value)}
-                className="font-mono text-lg bg-input border-border focus:border-primary"
-                step="0.1"
-              />
+              <div className="relative">
+                <Input
+                  id="frequency"
+                  type="number"
+                  value={frequency}
+                  onChange={(e) => handleFrequencyChange(e.target.value)}
+                  className={`font-mono text-lg bg-input border-border focus:border-primary ${
+                    isDragging ? "cursor-ns-resize select-none" : ""
+                  }`}
+                  step="0.1"
+                  onMouseDown={handleMouseDown}
+                />
+                {isDragging && (
+                  <div className="absolute -right-2 top-1/2 -translate-y-1/2 text-xs text-secondary neon-glow-cyan">
+                    ⇅
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="grid grid-cols-3 gap-2">

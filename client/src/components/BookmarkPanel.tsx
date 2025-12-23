@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Bookmark, Download, Edit, Plus, Radio, Trash2, Upload } from "lucide-react";
+import { PRESET_PACKS, type BookmarkPack } from "@/lib/presetBookmarks";
+import { Bookmark, Download, Edit, Package, Plus, Radio, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -44,7 +45,9 @@ export function BookmarkPanel({ onTuneToFrequency }: BookmarkPanelProps) {
     description: string;
     category: string;
   } | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [isPresetDialogOpen, setIsPresetDialogOpen] = useState(false);
+  const [selectedPack, setSelectedPack] = useState<BookmarkPack | null>(null);
 
   const utils = trpc.useUtils();
   const bookmarks = trpc.bookmarks.list.useQuery();
@@ -198,6 +201,33 @@ export function BookmarkPanel({ onTuneToFrequency }: BookmarkPanelProps) {
     event.target.value = "";
   };
 
+  const handleLoadPresetPack = async (pack: BookmarkPack) => {
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const bookmark of pack.bookmarks) {
+      try {
+        await createBookmark.mutateAsync({
+          name: bookmark.name,
+          frequency: bookmark.frequency,
+          description: bookmark.description,
+          category: bookmark.category,
+        });
+        successCount++;
+      } catch (error) {
+        errorCount++;
+      }
+    }
+
+    utils.bookmarks.list.invalidate();
+    setIsPresetDialogOpen(false);
+    toast.success(
+      `Loaded ${successCount} bookmarks from "${pack.name}"${
+        errorCount > 0 ? `, ${errorCount} failed` : ""
+      }`
+    );
+  };
+
   const categories = ["all", ...Array.from(new Set(bookmarks.data?.map((b) => b.category).filter((c): c is string => c !== null) || []))];
   const filteredBookmarks =
     selectedCategory === "all"
@@ -213,6 +243,64 @@ export function BookmarkPanel({ onTuneToFrequency }: BookmarkPanelProps) {
             <span className="neon-glow-cyan text-secondary">BOOKMARKS</span>
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Dialog open={isPresetDialogOpen} onOpenChange={setIsPresetDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 hover:bg-secondary/20 hover:text-secondary"
+                  title="Load preset pack"
+                >
+                  <Package className="w-3 h-3" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-card border-border">
+                <DialogHeader>
+                  <DialogTitle className="neon-glow-pink text-primary">Load Preset Pack</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                    Choose a curated bookmark collection to import
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-4">
+                  {PRESET_PACKS.map((pack) => (
+                    <Card
+                      key={pack.id}
+                      className="bg-card/50 border-border hover:border-secondary cursor-pointer transition-colors"
+                      onClick={() => setSelectedPack(pack)}
+                    >
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-secondary">{pack.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">{pack.description}</p>
+                      </CardHeader>
+                      <CardContent className="pb-3">
+                        <p className="text-xs text-muted-foreground">
+                          {pack.bookmarks.length} bookmarks
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsPresetDialogOpen(false);
+                      setSelectedPack(null);
+                    }}
+                    className="border-border"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => selectedPack && handleLoadPresetPack(selectedPack)}
+                    disabled={!selectedPack || createBookmark.isPending}
+                    className="box-glow-pink"
+                  >
+                    {createBookmark.isPending ? "Loading..." : "Load Pack"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button
               size="sm"
               variant="ghost"
