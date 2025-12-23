@@ -23,6 +23,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSubscribedRef = useRef(false);
+  const isUnmountingRef = useRef(false);
 
   const connect = useCallback(() => {
     try {
@@ -62,11 +63,13 @@ export function useWebSocket(): UseWebSocketReturn {
         setIsConnected(false);
         wsRef.current = null;
 
-        // Attempt to reconnect after 3 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log("[WebSocket] Attempting to reconnect...");
-          connect();
-        }, 3000);
+        // Only attempt to reconnect if not unmounting
+        if (!isUnmountingRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log("[WebSocket] Attempting to reconnect...");
+            connect();
+          }, 3000);
+        }
       };
 
       wsRef.current = ws;
@@ -91,15 +94,23 @@ export function useWebSocket(): UseWebSocketReturn {
   }, []);
 
   useEffect(() => {
+    isUnmountingRef.current = false;
     connect();
 
     return () => {
+      // Mark as unmounting to prevent reconnection
+      isUnmountingRef.current = true;
+      
       // Cleanup on unmount
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       if (wsRef.current) {
+        // Close without triggering reconnect
+        wsRef.current.onclose = null;
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [connect]);

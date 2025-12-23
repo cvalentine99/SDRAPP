@@ -169,3 +169,8 @@
 - [x] Fuzzy search across pages, bookmarks, settings
 - [x] Quick navigation to any page from command palette
 - [x] Bookmark search and quick-tune from command palette
+
+## Bug Fixes
+- [x] Fix WebSocket rapid reconnection issue during hot reloads
+- [x] Improve WebSocket cleanup on component unmount
+- [x] Add connection debouncing to prevent reconnection churn
