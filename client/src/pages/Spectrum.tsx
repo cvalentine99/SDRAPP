@@ -11,14 +11,81 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pause, Play, Radio } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { trpc } from "@/lib/trpc";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
+
+  const { fftData, isConnected, subscribe, unsubscribe } = useWebSocket();
+  const deviceConfig = trpc.device.getConfig.useQuery();
+  const updateConfig = trpc.device.updateConfig.useMutation();
+
+  // Subscribe to FFT stream when running
+  useEffect(() => {
+    if (isRunning) {
+      subscribe();
+    } else {
+      unsubscribe();
+    }
+  }, [isRunning, subscribe, unsubscribe]);
+
+  // Load saved config
+  useEffect(() => {
+    if (deviceConfig.data) {
+      setFrequency(deviceConfig.data.centerFrequency);
+      setGain([deviceConfig.data.gain]);
+    }
+  }, [deviceConfig.data]);
+
+  const handleFrequencyChange = (newFreq: string) => {
+    setFrequency(newFreq);
+    if (deviceConfig.data) {
+      updateConfig.mutate({
+        centerFrequency: newFreq,
+        sampleRate: deviceConfig.data.sampleRate,
+        gain: deviceConfig.data.gain,
+        lnaGain: deviceConfig.data.lnaGain ?? undefined,
+        tiaGain: deviceConfig.data.tiaGain ?? undefined,
+        pgaGain: deviceConfig.data.pgaGain ?? undefined,
+        agcMode: deviceConfig.data.agcMode,
+        dcOffsetCorrection: deviceConfig.data.dcOffsetCorrection,
+        iqBalanceCorrection: deviceConfig.data.iqBalanceCorrection,
+        masterClockRate: deviceConfig.data.masterClockRate ?? undefined,
+        clockSource: deviceConfig.data.clockSource ?? undefined,
+        antenna: deviceConfig.data.antenna ?? undefined,
+        fftSize: deviceConfig.data.fftSize ?? undefined,
+        windowFunction: deviceConfig.data.windowFunction ?? undefined,
+      });
+    }
+  };
+
+  const handleGainChange = (newGain: number[]) => {
+    setGain(newGain);
+    if (deviceConfig.data) {
+      updateConfig.mutate({
+        centerFrequency: deviceConfig.data.centerFrequency,
+        sampleRate: deviceConfig.data.sampleRate,
+        gain: newGain[0] || 50,
+        lnaGain: deviceConfig.data.lnaGain ?? undefined,
+        tiaGain: deviceConfig.data.tiaGain ?? undefined,
+        pgaGain: deviceConfig.data.pgaGain ?? undefined,
+        agcMode: deviceConfig.data.agcMode,
+        dcOffsetCorrection: deviceConfig.data.dcOffsetCorrection,
+        iqBalanceCorrection: deviceConfig.data.iqBalanceCorrection,
+        masterClockRate: deviceConfig.data.masterClockRate ?? undefined,
+        clockSource: deviceConfig.data.clockSource ?? undefined,
+        antenna: deviceConfig.data.antenna ?? undefined,
+        fftSize: deviceConfig.data.fftSize ?? undefined,
+        windowFunction: deviceConfig.data.windowFunction ?? undefined,
+      });
+    }
+  };
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4 p-4">
@@ -81,7 +148,7 @@ export default function Spectrum() {
                 id="frequency"
                 type="number"
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value)}
+                onChange={(e) => handleFrequencyChange(e.target.value)}
                 className="font-mono text-lg bg-input border-border focus:border-primary"
                 step="0.1"
               />
@@ -146,7 +213,7 @@ export default function Spectrum() {
               </div>
               <Slider
                 value={gain}
-                onValueChange={setGain}
+                onValueChange={handleGainChange}
                 max={76}
                 step={1}
                 className="[&_[role=slider]]:border-primary [&_[role=slider]]:bg-primary"
@@ -196,12 +263,15 @@ export default function Spectrum() {
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-black/50 rounded p-2 border border-border">
-                <div className="text-muted-foreground">FFT Rate</div>
-                <div className="text-secondary font-mono">60 FPS</div>
+                <div className="text-muted-foreground">Connection</div>
+                <div className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-secondary animate-pulse box-glow-cyan' : 'bg-muted'}`} />
+                  <span className="font-mono text-secondary">{isConnected ? 'LIVE' : 'OFFLINE'}</span>
+                </div>
               </div>
               <div className="bg-black/50 rounded p-2 border border-border">
-                <div className="text-muted-foreground">Throughput</div>
-                <div className="text-primary font-mono">123 KB/s</div>
+                <div className="text-muted-foreground">FFT Rate</div>
+                <div className="text-primary font-mono">{fftData ? '60 FPS' : '--'}</div>
               </div>
             </div>
           </CardContent>

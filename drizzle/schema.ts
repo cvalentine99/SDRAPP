@@ -25,4 +25,86 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Device configuration table for storing SDR settings
+ */
+export const deviceConfigs = mysqlTable("device_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  centerFrequency: varchar("center_frequency", { length: 50 }).notNull(), // MHz
+  sampleRate: varchar("sample_rate", { length: 50 }).notNull(), // MSPS
+  gain: int("gain").notNull(), // dB
+  lnaGain: int("lna_gain"),
+  tiaGain: int("tia_gain"),
+  pgaGain: int("pga_gain"),
+  agcMode: mysqlEnum("agc_mode", ["auto", "manual"]).default("manual").notNull(),
+  dcOffsetCorrection: mysqlEnum("dc_offset_correction", ["enabled", "disabled"]).default("enabled").notNull(),
+  iqBalanceCorrection: mysqlEnum("iq_balance_correction", ["enabled", "disabled"]).default("enabled").notNull(),
+  masterClockRate: varchar("master_clock_rate", { length: 50 }),
+  clockSource: varchar("clock_source", { length: 50 }),
+  antenna: varchar("antenna", { length: 50 }),
+  fftSize: int("fft_size").default(2048),
+  windowFunction: varchar("window_function", { length: 50 }).default("hann"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DeviceConfig = typeof deviceConfigs.$inferSelect;
+export type InsertDeviceConfig = typeof deviceConfigs.$inferInsert;
+
+/**
+ * Frequency bookmarks for quick tuning
+ */
+export const frequencyBookmarks = mysqlTable("frequency_bookmarks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  frequency: varchar("frequency", { length: 50 }).notNull(), // MHz
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type FrequencyBookmark = typeof frequencyBookmarks.$inferSelect;
+export type InsertFrequencyBookmark = typeof frequencyBookmarks.$inferInsert;
+
+/**
+ * Recording metadata for SigMF captures
+ */
+export const recordings = mysqlTable("recordings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  s3Key: varchar("s3_key", { length: 512 }).notNull(),
+  s3Url: varchar("s3_url", { length: 1024 }).notNull(),
+  centerFrequency: varchar("center_frequency", { length: 50 }).notNull(),
+  sampleRate: varchar("sample_rate", { length: 50 }).notNull(),
+  gain: int("gain").notNull(),
+  duration: int("duration").notNull(), // seconds
+  fileSize: varchar("file_size", { length: 50 }).notNull(),
+  author: varchar("author", { length: 255 }),
+  description: text("description"),
+  license: varchar("license", { length: 100 }),
+  hardware: varchar("hardware", { length: 255 }),
+  location: varchar("location", { length: 255 }),
+  tags: text("tags"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Recording = typeof recordings.$inferSelect;
+export type InsertRecording = typeof recordings.$inferInsert;
+
+/**
+ * AI assistant conversation history
+ */
+export const aiConversations = mysqlTable("ai_conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").notNull(),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type AIConversation = typeof aiConversations.$inferSelect;
+export type InsertAIConversation = typeof aiConversations.$inferInsert;

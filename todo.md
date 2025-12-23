@@ -122,3 +122,24 @@
 - [ ] Loading states for all async operations
 - [ ] Error messages with recovery suggestions
 - [ ] Empty states for data displays
+
+## Backend Integration (Pre-Deployment)
+- [x] Database schema for device configurations
+- [x] Database schema for frequency bookmarks
+- [x] Database schema for recording metadata
+- [x] Database schema for AI conversation history
+- [x] tRPC procedure: Get device configuration
+- [x] tRPC procedure: Update device configuration (frequency, sample rate, gain)
+- [x] tRPC procedure: Save frequency bookmark
+- [x] tRPC procedure: List frequency bookmarks
+- [x] tRPC procedure: Delete frequency bookmark
+- [x] tRPC procedure: Create recording
+- [x] tRPC procedure: List recordings
+- [x] tRPC procedure: Delete recording
+- [x] tRPC procedure: AI assistant chat (with LLM integration)
+- [x] WebSocket server setup for FFT data streaming
+- [x] WebSocket connection management in frontend
+- [x] Frontend: Connect device controls to tRPC procedures
+- [ ] Frontend: Connect recording controls to tRPC procedures
+- [ ] Frontend: Connect AI assistant to tRPC procedures
+- [x] End-to-end testing with simulated data
