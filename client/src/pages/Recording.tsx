@@ -90,31 +90,29 @@ export default function Recording() {
       const freq = deviceConfig.data.centerFrequency.replace(".", "_");
       const filename = `capture_${freq}MHz_${timestamp}`;
 
-      // Generate simulated IQ data (complex float32 format: IQIQIQ...)
-      // In production, this would come from actual hardware capture
-      const numSamples = Math.floor(currentFileSize / 8); // complex float32 = 8 bytes per sample
-      const iqData = new Float32Array(numSamples * 2);
+      // TODO: Replace with real hardware IQ recording
+      // When iq_recorder binary is available, use:
+      // const result = await trpc.recording.startIQRecording.mutate({
+      //   frequency: parseFloat(deviceConfig.data.centerFrequency),
+      //   sampleRate: parseFloat(deviceConfig.data.sampleRate),
+      //   gain: deviceConfig.data.gain,
+      //   duration: recordingDuration,
+      //   filename,
+      // });
+      // Then upload with trpc.recording.uploadRecordedIQ.mutate()
       
-      // Generate simulated IQ samples with some signal characteristics
+      // For now, use simulated IQ data
+      const numSamples = Math.floor(currentFileSize / 8);
+      const iqData = new Float32Array(numSamples * 2);
       const sampleRate = parseFloat(deviceConfig.data.sampleRate) * 1e6;
-      const centerFreq = parseFloat(deviceConfig.data.centerFrequency) * 1e6;
       
       for (let i = 0; i < numSamples; i++) {
-        // Base noise floor
-        const noiseI = (Math.random() - 0.5) * 0.1;
-        const noiseQ = (Math.random() - 0.5) * 0.1;
-        
-        // Add a simulated carrier signal
         const t = i / sampleRate;
-        const signalFreq = 1e6; // 1 MHz offset from center
-        const phase = 2 * Math.PI * signalFreq * t;
-        const amplitude = 0.5;
-        
-        iqData[i * 2] = amplitude * Math.cos(phase) + noiseI; // I
-        iqData[i * 2 + 1] = amplitude * Math.sin(phase) + noiseQ; // Q
+        const phase = 2 * Math.PI * 1e6 * t;
+        iqData[i * 2] = 0.5 * Math.cos(phase) + (Math.random() - 0.5) * 0.1;
+        iqData[i * 2 + 1] = 0.5 * Math.sin(phase) + (Math.random() - 0.5) * 0.1;
       }
       
-      // Convert to base64 for upload
       const buffer = Buffer.from(iqData.buffer);
       const base64Data = buffer.toString('base64');
       

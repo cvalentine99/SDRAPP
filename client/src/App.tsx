@@ -10,6 +10,7 @@ import Spectrum from "./pages/Spectrum";
 import Device from "./pages/Device";
 import Recording from "./pages/Recording";
 import Telemetry from "./pages/Telemetry";
+import { Scanner } from "./pages/Scanner";
 
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
         <Route path={"/"} component={Spectrum} />
         <Route path={"/device"} component={Device} />
         <Route path={"/recording"} component={Recording} />
+        <Route path={"/scanner"} component={Scanner} />
         <Route path={"/telemetry"} component={Telemetry} />
 
         <Route path={"/404"} component={NotFound} />

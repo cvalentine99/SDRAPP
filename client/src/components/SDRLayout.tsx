@@ -15,6 +15,7 @@ import {
   Activity,
   Database,
   Radio,
+  Radar,
   Settings,
   User,
   Waves,
@@ -40,6 +41,7 @@ export function SDRLayout({ children }: SDRLayoutProps) {
     { path: "/", label: "Spectrum", icon: Waves },
     { path: "/device", label: "Device", icon: Radio },
     { path: "/recording", label: "Recording", icon: Database },
+    { path: "/scanner", label: "Scanner", icon: Radar },
     { path: "/telemetry", label: "Telemetry", icon: Activity },
   ];
 

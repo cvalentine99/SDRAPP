@@ -10,8 +10,10 @@ find_package(UHD REQUIRED)
 # Find FFTW3
 find_library(FFTW3F_LIBRARY fftw3f REQUIRED)
 
-# Add executable
+# Add executables
 add_executable(sdr_streamer src/sdr_streamer.cpp)
+add_executable(iq_recorder src/iq_recorder.cpp)
+add_executable(freq_scanner src/freq_scanner.cpp)
 
 # Link libraries
 target_link_libraries(sdr_streamer
@@ -20,8 +22,21 @@ target_link_libraries(sdr_streamer
     pthread
 )
 
+target_link_libraries(iq_recorder
+    ${UHD_LIBRARIES}
+    pthread
+)
+
+target_link_libraries(freq_scanner
+    ${UHD_LIBRARIES}
+    ${FFTW3F_LIBRARY}
+    pthread
+)
+
 # Include directories
 target_include_directories(sdr_streamer PRIVATE ${UHD_INCLUDE_DIRS})
+target_include_directories(iq_recorder PRIVATE ${UHD_INCLUDE_DIRS})
+target_include_directories(freq_scanner PRIVATE ${UHD_INCLUDE_DIRS})
 
 # Installation
-install(TARGETS sdr_streamer DESTINATION bin)
+install(TARGETS sdr_streamer iq_recorder freq_scanner DESTINATION bin)

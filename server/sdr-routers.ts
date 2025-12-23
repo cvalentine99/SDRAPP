@@ -197,6 +197,253 @@ export const recordingRouter = router({
         s3Key,
       };
     }),
+
+  startIQRecording: protectedProcedure
+    .input(
+      z.object({
+        frequency: z.number(),
+        sampleRate: z.number(),
+        gain: z.number(),
+        duration: z.number(),
+        filename: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { spawn } = await import("child_process");
+      const fs = await import("fs");
+      const path = await import("path");
+      const os = await import("os");
+
+      // Find iq_recorder binary
+      const possiblePaths = [
+        path.join(__dirname, "../hardware/build/iq_recorder"),
+        "/usr/local/bin/iq_recorder",
+        "/usr/bin/iq_recorder",
+      ];
+
+      let recorderPath = "";
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          recorderPath = p;
+          break;
+        }
+      }
+
+      if (!recorderPath) {
+        throw new Error("iq_recorder binary not found. Please build hardware components.");
+      }
+
+      // Create temporary output file
+      const tempDir = os.tmpdir();
+      const tempFile = path.join(tempDir, `${input.filename}.sigmf-data`);
+
+      // Spawn iq_recorder process
+      const args = [
+        "--freq", input.frequency.toString(),
+        "--rate", input.sampleRate.toString(),
+        "--gain", input.gain.toString(),
+        "--duration", input.duration.toString(),
+        "--output", tempFile,
+      ];
+
+      return new Promise<{ success: boolean; tempFile: string }>((resolve, reject) => {
+        const proc = spawn(recorderPath, args);
+
+        let stderr = "";
+        proc.stderr?.on("data", (data: Buffer) => {
+          stderr += data.toString();
+          console.log("[iq_recorder]", data.toString().trim());
+        });
+
+        proc.on("error", (error) => {
+          reject(new Error(`Failed to start iq_recorder: ${error.message}`));
+        });
+
+        proc.on("exit", (code) => {
+          if (code === 0) {
+            resolve({ success: true, tempFile });
+          } else {
+            reject(new Error(`iq_recorder exited with code ${code}\n${stderr}`));
+          }
+        });
+      });
+    }),
+
+  uploadRecordedIQ: protectedProcedure
+    .input(
+      z.object({
+        tempFile: z.string(),
+        recordingId: z.number(),
+        filename: z.string(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const fs = await import("fs");
+
+      // Read IQ file
+      const iqData = fs.readFileSync(input.tempFile);
+
+      // Upload to S3
+      const s3Key = `recordings/${input.recordingId}/${input.filename}.sigmf-data`;
+      const { url, key } = await storagePut(s3Key, iqData, "application/octet-stream");
+
+      // Delete temp file
+      fs.unlinkSync(input.tempFile);
+
+      return { success: true, s3Url: url, s3Key: key };
+    }),
+});
+
+// ============================================================================
+// Frequency Scanner Router
+// ============================================================================
+
+export const scannerRouter = router({
+  start: protectedProcedure
+    .input(
+      z.object({
+        startFreq: z.number(),
+        stopFreq: z.number(),
+        stepFreq: z.number(),
+        sampleRate: z.number(),
+        gain: z.number(),
+        threshold: z.number(),
+        dwellTime: z.number(),
+        pauseOnSignal: z.boolean(),
+        pauseDuration: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { spawn } = await import("child_process");
+      const path = await import("path");
+      const fs = await import("fs");
+
+      // Find freq_scanner binary
+      const possiblePaths = [
+        path.join(__dirname, "../hardware/build/freq_scanner"),
+        "/usr/local/bin/freq_scanner",
+        "/usr/bin/freq_scanner",
+      ];
+
+      let scannerPath = "";
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          scannerPath = p;
+          break;
+        }
+      }
+
+      if (!scannerPath) {
+        throw new Error("freq_scanner binary not found. Please build hardware components.");
+      }
+
+      // Spawn freq_scanner process
+      const args = [
+        "--start", input.startFreq.toString(),
+        "--stop", input.stopFreq.toString(),
+        "--step", input.stepFreq.toString(),
+        "--rate", input.sampleRate.toString(),
+        "--gain", input.gain.toString(),
+        "--threshold", input.threshold.toString(),
+        "--dwell", input.dwellTime.toString(),
+        "--pause-on-signal", input.pauseOnSignal ? "true" : "false",
+        "--pause-duration", input.pauseDuration.toString(),
+      ];
+
+      return new Promise<{ success: boolean; scanId: string }>((resolve, reject) => {
+        const scanId = Date.now().toString();
+        const proc = spawn(scannerPath, args);
+
+        // Store process reference for status queries
+        (global as any).scannerProcesses = (global as any).scannerProcesses || new Map();
+        (global as any).scannerProcesses.set(scanId, {
+          process: proc,
+          detections: [],
+          progress: 0,
+          status: "running",
+        });
+
+        let stdout = "";
+        proc.stdout?.on("data", (data: Buffer) => {
+          stdout += data.toString();
+          const lines = stdout.split("\n");
+          stdout = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const json = JSON.parse(line);
+                const scanData = (global as any).scannerProcesses.get(scanId);
+                
+                if (json.type === "detection") {
+                  scanData.detections.push(json);
+                } else if (json.type === "progress") {
+                  scanData.progress = json.progress;
+                } else if (json.type === "complete") {
+                  scanData.status = "complete";
+                }
+              } catch (e) {
+                console.error("[freq_scanner] Failed to parse JSON:", line);
+              }
+            }
+          }
+        });
+
+        proc.stderr?.on("data", (data: Buffer) => {
+          console.log("[freq_scanner]", data.toString().trim());
+        });
+
+        proc.on("error", (error) => {
+          (global as any).scannerProcesses.get(scanId).status = "error";
+          reject(new Error(`Failed to start freq_scanner: ${error.message}`));
+        });
+
+        proc.on("exit", (code) => {
+          const scanData = (global as any).scannerProcesses.get(scanId);
+          if (code === 0) {
+            scanData.status = "complete";
+          } else {
+            scanData.status = "error";
+          }
+        });
+
+        // Return immediately with scan ID
+        resolve({ success: true, scanId });
+      });
+    }),
+
+  getStatus: protectedProcedure
+    .input(z.object({ scanId: z.string() }))
+    .query(async ({ input }) => {
+      const scanData = (global as any).scannerProcesses?.get(input.scanId);
+      
+      if (!scanData) {
+        throw new Error("Scan not found");
+      }
+
+      return {
+        status: scanData.status,
+        progress: scanData.progress,
+        detections: scanData.detections,
+      };
+    }),
+
+  stop: protectedProcedure
+    .input(z.object({ scanId: z.string() }))
+    .mutation(async ({ input }) => {
+      const scanData = (global as any).scannerProcesses?.get(input.scanId);
+      
+      if (!scanData) {
+        throw new Error("Scan not found");
+      }
+
+      if (scanData.process && scanData.status === "running") {
+        scanData.process.kill("SIGTERM");
+        scanData.status = "stopped";
+      }
+
+      return { success: true };
+    }),
 });
 
 // ============================================================================

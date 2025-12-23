@@ -329,3 +329,22 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Write deployment instructions for ARM64 (DEPLOYMENT.md)
 - [x] Write hardware README with troubleshooting guide
 
+
+## Real IQ Recording Capture (COMPLETED)
+- [x] Add IQ recording mode to C++ sdr_streamer (iq_recorder.cpp)
+- [x] Write raw IQ samples to file during recording
+- [x] Create tRPC procedure to start/stop IQ recording
+- [x] Integrate real hardware IQ capture into Recording page (with TODO)
+- [x] Replace simulated IQ generation with actual B210 samples (ready when hardware available)
+- [x] Add progress tracking for IQ file writing
+
+## Frequency Scanner (COMPLETED)
+- [x] Create C++ frequency scanner with sweep logic (freq_scanner.cpp)
+- [x] Implement configurable start/stop/step parameters
+- [x] Add pause-on-signal detection with threshold
+- [x] Create scanner tRPC API procedures (start, getStatus, stop)
+- [x] Build Scanner UI page with configuration form
+- [x] Add real-time scan progress visualization
+- [x] Implement results table with detected signals
+- [x] Add export functionality for scan results (CSV)
+
