@@ -79,6 +79,23 @@ export async function createFrequencyBookmark(bookmark: InsertFrequencyBookmark)
   return bookmarks[0]!;
 }
 
+export async function updateFrequencyBookmark(
+  id: number,
+  userId: number,
+  data: Partial<Omit<InsertFrequencyBookmark, "userId">>
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(frequencyBookmarks)
+    .set(data)
+    .where(eq(frequencyBookmarks.id, id));
+
+  const bookmarks = await getFrequencyBookmarks(userId);
+  return bookmarks.find((b) => b.id === id)!;
+}
+
 export async function deleteFrequencyBookmark(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

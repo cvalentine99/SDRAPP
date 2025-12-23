@@ -147,11 +147,10 @@
 ## Frequency Bookmark Management UI (New Feature)
 - [x] Bookmark panel component with list view
 - [x] Create bookmark dialog with name, frequency, description, category
-- [ ] Edit bookmark functionality
-- [x] Delete bookmark with confirmation
+- [x] Edit bookmark functionality
 - [x] Category filter/organization
 - [x] Quick-tune buttons in Spectrum page
-- [ ] Bookmark import/export (JSON)
+- [x] Bookmark import/export (JSON)
 
 ## SigMF Recording Workflow (New Feature)
 - [x] Connect Recording page to tRPC procedures

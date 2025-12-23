@@ -36,15 +36,16 @@ describe("Bookmark Management", () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
+    const uniqueName = `ISM 915 MHz ${Date.now()}`;
     const bookmark = await caller.bookmarks.create({
-      name: "ISM 915 MHz",
+      name: uniqueName,
       frequency: "915.0",
       description: "Industrial, Scientific and Medical band",
       category: "ISM",
     });
 
     expect(bookmark).toBeDefined();
-    expect(bookmark.name).toBe("ISM 915 MHz");
+    expect(bookmark.name).toBe(uniqueName);
     expect(bookmark.frequency).toBe("915.0");
     expect(bookmark.category).toBe("ISM");
   });

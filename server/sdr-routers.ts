@@ -5,6 +5,7 @@ import {
   upsertDeviceConfig,
   getFrequencyBookmarks,
   createFrequencyBookmark,
+  updateFrequencyBookmark,
   deleteFrequencyBookmark,
   getRecordings,
   createRecording,
@@ -98,6 +99,25 @@ export const bookmarksRouter = router({
         userId: ctx.user.id,
         ...input,
       });
+    }),
+
+  update: protectedProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        name: z.string().optional(),
+        frequency: z.string().optional(),
+        description: z.string().optional(),
+        category: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, ...data } = input;
+      // Filter out undefined values to only update provided fields
+      const updateData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== undefined)
+      );
+      return await updateFrequencyBookmark(id, ctx.user.id, updateData);
     }),
 
   delete: protectedProcedure
