@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useGPUMetrics } from "@/contexts/GPUMetricsContext";
 
 interface WaterfallDisplayProps {
   width?: number;
@@ -26,6 +27,11 @@ export function WaterfallDisplay({
 }: WaterfallDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const { updateMetrics } = useGPUMetrics();
+  const frameCountRef = useRef(0);
+  const lastFpsUpdateRef = useRef(Date.now());
+  const textureCountRef = useRef(0);
+  const bufferCountRef = useRef(0);
 
   // Initialize WebGL context and shaders
   useEffect(() => {
@@ -134,6 +140,7 @@ export function WaterfallDisplay({
 
     // Position buffer
     const positionBuffer = gl.createBuffer();
+    bufferCountRef.current++;
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
@@ -143,6 +150,7 @@ export function WaterfallDisplay({
 
     // Texture coordinate buffer
     const texCoordBuffer = gl.createBuffer();
+    bufferCountRef.current++;
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
 
@@ -152,6 +160,7 @@ export function WaterfallDisplay({
 
     // Create circular buffer texture
     const texture = gl.createTexture();
+    textureCountRef.current++;
     // texture stored in closure
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
@@ -229,6 +238,38 @@ export function WaterfallDisplay({
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      // Track FPS and update GPU metrics
+      frameCountRef.current++;
+      const now = Date.now();
+      const elapsed = now - lastFpsUpdateRef.current;
+      if (elapsed >= 1000) {
+        const fps = Math.round((frameCountRef.current * 1000) / elapsed);
+        
+        // Get WebGL memory info if available
+        const memoryInfo = (gl as any).getExtension('WEBGL_debug_renderer_info');
+        let memoryUsed = 0;
+        let memoryTotal = 0;
+        
+        if (memoryInfo) {
+          // Estimate based on texture and buffer sizes
+          const textureMemory = width * height * 4; // RGBA bytes
+          memoryUsed = (textureMemory / (1024 * 1024)); // Convert to MB
+          memoryTotal = 256; // Typical GPU memory estimate
+        }
+        
+        updateMetrics({
+          fps,
+          memoryUsed,
+          memoryTotal,
+          textureCount: textureCountRef.current,
+          bufferCount: bufferCountRef.current,
+          drawCalls: frameCountRef.current,
+        });
+        
+        frameCountRef.current = 0;
+        lastFpsUpdateRef.current = now;
+      }
 
       animationFrameRef.current = requestAnimationFrame(render);
     };

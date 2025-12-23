@@ -400,3 +400,12 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Add Dashboard route to App.tsx
 - [x] Add Dashboard nav link to SDRLayout
 
+
+## GPU Utilization Metrics (COMPLETED)
+- [x] Add WebGL memory info extension to WaterfallDisplay
+- [x] Track GPU memory usage, texture count, buffer count, draw calls
+- [x] Create GPU metrics context/hook (GPUMetricsContext.tsx)
+- [x] Extend telemetry router to expose GPU metrics (gpu-router.ts placeholder)
+- [x] Add GPU utilization card to Dashboard page (4th card in grid)
+- [x] Display WebGL FPS, memory usage, textures, buffers, performance status
+

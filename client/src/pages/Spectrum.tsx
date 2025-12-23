@@ -17,6 +17,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { SpectrographDisplayWithDetection } from "@/components/SpectrographDisplayWithDetection";
+import { GPUMetricsProvider } from "@/contexts/GPUMetricsContext";
 
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useFrequencyDrag } from "@/hooks/useFrequencyDrag";
@@ -24,7 +25,7 @@ import { trpc } from "@/lib/trpc";
 import { COLOR_MAP_PRESETS, colorMapToGradient, type ColorMap } from "@/lib/colorMaps";
 import { GradientEditor } from "@/components/GradientEditor";
 
-export default function Spectrum() {
+function SpectrumContent() {
   const [isRunning, setIsRunning] = useState(false);
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
@@ -147,6 +148,7 @@ export default function Spectrum() {
   };
 
   return (
+    <GPUMetricsProvider>
     <div className="h-[calc(100vh-8rem)] flex gap-4 p-4">
       {/* Main Visualization Area */}
       <div className="flex-1 flex flex-col gap-4">
@@ -539,5 +541,10 @@ export default function Spectrum() {
         </Card>
       </div>
     </div>
+    </GPUMetricsProvider>
   );
+}
+
+export default function Spectrum() {
+  return <SpectrumContent />;
 }

@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Wifi, WifiOff, Zap, Network } from "lucide-react";
+import { Activity, Wifi, WifiOff, Zap, Network, Cpu } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useEffect, useState } from "react";
+import { useGPUMetrics } from "@/contexts/GPUMetricsContext";
 
 interface MetricsHistory {
   timestamp: number;
@@ -18,6 +19,9 @@ export default function Dashboard() {
   const { data: metrics } = trpc.telemetry.getMetrics.useQuery(undefined, {
     refetchInterval: 1000, // Update every second
   });
+
+  // Get GPU metrics from context
+  const { metrics: gpuMetrics } = useGPUMetrics();
 
   // Update history when new metrics arrive
   useEffect(() => {
@@ -104,7 +108,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* FFT Rate */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
@@ -200,6 +204,56 @@ export default function Dashboard() {
                 ) : droppedFrames < 10 ? (
                   <div className="text-yellow-500 font-semibold">
                     ⚠ Minor Loss
+                  </div>
+                ) : (
+                  <div className="text-red-500 font-semibold">✗ Poor</div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GPU Utilization */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-secondary" />
+              <span className="neon-glow-cyan text-secondary">GPU UTILIZATION</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="text-center">
+              <div className="text-5xl font-mono text-secondary mb-2">
+                {gpuMetrics.fps}
+              </div>
+              <div className="text-xs text-muted-foreground">WebGL FPS</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="bg-black/50 rounded p-2 border border-border">
+                <div className="text-lg font-mono text-primary">
+                  {gpuMetrics.memoryUsed.toFixed(1)}
+                </div>
+                <div className="text-xs text-muted-foreground">MB Used</div>
+              </div>
+              <div className="bg-black/50 rounded p-2 border border-border">
+                <div className="text-lg font-mono text-primary">
+                  {gpuMetrics.textureCount}
+                </div>
+                <div className="text-xs text-muted-foreground">Textures</div>
+              </div>
+            </div>
+            <div className="bg-black/50 rounded p-3 border border-border">
+              <div className="text-xs text-muted-foreground mb-1">
+                Buffers: {gpuMetrics.bufferCount} | Draws: {gpuMetrics.drawCalls}
+              </div>
+              <div className="text-center">
+                {gpuMetrics.fps >= 55 ? (
+                  <div className="text-secondary font-semibold">
+                    ✓ Excellent
+                  </div>
+                ) : gpuMetrics.fps >= 30 ? (
+                  <div className="text-yellow-500 font-semibold">
+                    ⚠ Acceptable
                   </div>
                 ) : (
                   <div className="text-red-500 font-semibold">✗ Poor</div>
