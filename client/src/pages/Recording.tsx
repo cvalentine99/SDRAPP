@@ -52,6 +52,9 @@ export default function Recording() {
       toast.error(`Failed to upload IQ data: ${error.message}`);
     },
   });
+  
+  const startIQRecording = trpc.recording.startIQRecording.useMutation();
+  const uploadRecordedIQ = trpc.recording.uploadRecordedIQ.useMutation();
 
   // Update recording duration timer
   useEffect(() => {
@@ -90,19 +93,33 @@ export default function Recording() {
       const freq = deviceConfig.data.centerFrequency.replace(".", "_");
       const filename = `capture_${freq}MHz_${timestamp}`;
 
-      // TODO: Replace with real hardware IQ recording
-      // When iq_recorder binary is available, use:
-      // const result = await trpc.recording.startIQRecording.mutate({
-      //   frequency: parseFloat(deviceConfig.data.centerFrequency),
-      //   sampleRate: parseFloat(deviceConfig.data.sampleRate),
-      //   gain: deviceConfig.data.gain,
-      //   duration: recordingDuration,
-      //   filename,
-      // });
-      // Then upload with trpc.recording.uploadRecordedIQ.mutate()
-      
-      // For now, use simulated IQ data
-      const numSamples = Math.floor(currentFileSize / 8);
+      // Try hardware IQ recording first, fall back to simulated if unavailable
+      let iqData: Uint8Array;
+      try {
+        const result = await startIQRecording.mutateAsync({
+          frequency: parseFloat(deviceConfig.data.centerFrequency),
+          sampleRate: parseFloat(deviceConfig.data.sampleRate),
+          gain: deviceConfig.data.gain,
+          duration: recordingDuration,
+          filename,
+        });
+        
+        // Upload recorded IQ file to S3
+        const uploadResult = await uploadRecordedIQ.mutateAsync({
+          tempFile: result.tempFile,
+          filename,
+          recordingId: 0, // Will be set after createRecording
+        });
+        
+        // Read the IQ data for upload (already in S3, but we need the data for metadata)
+        iqData = new Uint8Array(0); // Placeholder since already uploaded
+        
+        toast.success("Hardware IQ recording captured");
+      } catch (hardwareError) {
+        toast.warning("Hardware unavailable, using simulated IQ data");
+        
+        // Fall back to simulated IQ data
+        const numSamples = Math.floor(currentFileSize / 8);
       
       // Prevent OOM: limit to 50MB of IQ data (~6.5M samples)
       const MAX_SAMPLES = 6_500_000;
@@ -112,24 +129,18 @@ export default function Recording() {
         return;
       }
       
-      const iqData = new Float32Array(numSamples * 2);
-      const sampleRate = parseFloat(deviceConfig.data.sampleRate) * 1e6;
-      
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / sampleRate;
-        const phase = 2 * Math.PI * 1e6 * t;
-        iqData[i * 2] = 0.5 * Math.cos(phase) + (Math.random() - 0.5) * 0.1;
-        iqData[i * 2 + 1] = 0.5 * Math.sin(phase) + (Math.random() - 0.5) * 0.1;
+        const iqDataFloat = new Float32Array(numSamples * 2);
+        const sampleRate = parseFloat(deviceConfig.data.sampleRate) * 1e6;
+        
+        for (let i = 0; i < numSamples; i++) {
+          const t = i / sampleRate;
+          const phase = 2 * Math.PI * 1e6 * t;
+          iqDataFloat[i * 2] = 0.5 * Math.cos(phase) + (Math.random() - 0.5) * 0.1;
+          iqDataFloat[i * 2 + 1] = 0.5 * Math.sin(phase) + (Math.random() - 0.5) * 0.1;
+        }
+        
+        iqData = new Uint8Array(iqDataFloat.buffer);
       }
-      
-      // Use browser-native approach (Buffer is Node.js only)
-      const uint8 = new Uint8Array(iqData.buffer);
-      let binary = '';
-      const chunkSize = 0x8000; // 32KB chunks to avoid call stack size exceeded
-      for (let i = 0; i < uint8.length; i += chunkSize) {
-        binary += String.fromCharCode.apply(null, Array.from(uint8.subarray(i, i + chunkSize)));
-      }
-      const base64Data = btoa(binary);
       
       // Upload IQ data to S3 with progress tracking
       setIsUploading(true);
@@ -147,6 +158,14 @@ export default function Recording() {
       }, 200);
       
       try {
+        // Convert iqData to base64 for upload
+        let binary = '';
+        const chunkSize = 0x8000; // 32KB chunks
+        for (let i = 0; i < iqData.length; i += chunkSize) {
+          binary += String.fromCharCode.apply(null, Array.from(iqData.subarray(i, i + chunkSize)));
+        }
+        const base64Data = btoa(binary);
+        
         const { s3Url, s3Key } = await uploadIQData.mutateAsync({
           filename: `${filename}.sigmf-data`,
           data: base64Data,

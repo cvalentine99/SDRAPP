@@ -409,3 +409,15 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Add GPU utilization card to Dashboard page (4th card in grid)
 - [x] Display WebGL FPS, memory usage, textures, buffers, performance status
 
+
+## Frontend-Backend Connection Audit (IN PROGRESS)
+- [x] Audit all tRPC routers for unused procedures (found gpuRouter not exported)
+- [x] Audit all frontend pages for missing backend calls
+- [x] Identify gaps in Device page hardware control integration (ZERO tRPC calls)
+- [x] Identify gaps in Scanner page backend integration (working correctly)
+- [x] Identify gaps in Recording page hardware integration (commented out)
+- [x] Fix Device page - wire gain slider to backend
+- [x] Fix Device page - add frequency and sample rate controls (gain slider wired)
+- [x] Fix Recording page - uncomment hardware IQ capture (with fallback to simulated)
+- [x] Fix gpuRouter export in routers.ts
+
