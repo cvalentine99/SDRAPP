@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useGPUMetrics } from "@/contexts/GPUMetricsContext";
 
 interface WaterfallDisplayProps {
   width?: number;
@@ -7,31 +6,17 @@ interface WaterfallDisplayProps {
   fftSize?: number;
 }
 
-// Simulation constants
-const NOISE_FLOOR = 30;
-const SIGNAL_1_FREQ = 0.3;
-const SIGNAL_1_WIDTH = 0.02;
-const SIGNAL_1_POWER = 150;
-const SIGNAL_2_FREQ = 0.6;
-const SIGNAL_2_WIDTH = 0.01;
-const SIGNAL_2_POWER = 200;
-const SIGNAL_3_FREQ = 0.75;
-const SIGNAL_3_WIDTH = 0.015;
-const SIGNAL_3_POWER = 100;
-const MAX_FFT_VALUE = 255;
-
 export function WaterfallDisplay({
   width = 1024,
   height = 512,
-  fftSize = 1024,
+  fftSize = 2048,
 }: WaterfallDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glRef = useRef<WebGLRenderingContext | null>(null);
+  const programRef = useRef<WebGLProgram | null>(null);
+  const textureRef = useRef<WebGLTexture | null>(null);
+  const [yOffset, setYOffset] = useState(0);
   const animationFrameRef = useRef<number | undefined>(undefined);
-  const { updateMetrics } = useGPUMetrics();
-  const frameCountRef = useRef(0);
-  const lastFpsUpdateRef = useRef(Date.now());
-  const textureCountRef = useRef(0);
-  const bufferCountRef = useRef(0);
 
   // Initialize WebGL context and shaders
   useEffect(() => {
@@ -49,7 +34,7 @@ export function WaterfallDisplay({
       return;
     }
 
-    // gl context stored in closure
+    glRef.current = gl;
 
     // Vertex shader for full-screen quad with circular scrolling
     const vertexShaderSource = `
@@ -128,7 +113,7 @@ export function WaterfallDisplay({
       return;
     }
 
-    // program stored in closure
+    programRef.current = program;
     gl.useProgram(program);
 
     // Create full-screen quad
@@ -140,7 +125,6 @@ export function WaterfallDisplay({
 
     // Position buffer
     const positionBuffer = gl.createBuffer();
-    bufferCountRef.current++;
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
@@ -150,7 +134,6 @@ export function WaterfallDisplay({
 
     // Texture coordinate buffer
     const texCoordBuffer = gl.createBuffer();
-    bufferCountRef.current++;
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STATIC_DRAW);
 
@@ -160,8 +143,7 @@ export function WaterfallDisplay({
 
     // Create circular buffer texture
     const texture = gl.createTexture();
-    textureCountRef.current++;
-    // texture stored in closure
+    textureRef.current = texture;
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
     // Set texture parameters for circular scrolling
@@ -194,14 +176,14 @@ export function WaterfallDisplay({
       for (let i = 0; i < fftSize; i++) {
         // Simulate some peaks and noise
         const freq = i / fftSize;
-        let value = Math.random() * NOISE_FLOOR;
+        let value = Math.random() * 30; // Noise floor
 
         // Add some simulated signals
-        if (Math.abs(freq - SIGNAL_1_FREQ) < SIGNAL_1_WIDTH) value += SIGNAL_1_POWER;
-        if (Math.abs(freq - SIGNAL_2_FREQ) < SIGNAL_2_WIDTH) value += SIGNAL_2_POWER;
-        if (Math.abs(freq - SIGNAL_3_FREQ) < SIGNAL_3_WIDTH) value += SIGNAL_3_POWER;
+        if (Math.abs(freq - 0.3) < 0.02) value += 150; // Signal at 30%
+        if (Math.abs(freq - 0.6) < 0.01) value += 200; // Strong signal at 60%
+        if (Math.abs(freq - 0.75) < 0.015) value += 100; // Signal at 75%
 
-        fftData[i] = Math.min(MAX_FFT_VALUE, value);
+        fftData[i] = Math.min(255, value);
       }
 
       // Update one row of the texture (circular buffer technique)
@@ -220,6 +202,7 @@ export function WaterfallDisplay({
 
       // Update Y-offset for scrolling
       currentRow = (currentRow + 1) % height;
+      setYOffset(currentRow / height);
     };
 
     // Render loop
@@ -239,38 +222,6 @@ export function WaterfallDisplay({
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-      // Track FPS and update GPU metrics
-      frameCountRef.current++;
-      const now = Date.now();
-      const elapsed = now - lastFpsUpdateRef.current;
-      if (elapsed >= 1000) {
-        const fps = Math.round((frameCountRef.current * 1000) / elapsed);
-        
-        // Get WebGL memory info if available
-        const memoryInfo = (gl as any).getExtension('WEBGL_debug_renderer_info');
-        let memoryUsed = 0;
-        let memoryTotal = 0;
-        
-        if (memoryInfo) {
-          // Estimate based on texture and buffer sizes
-          const textureMemory = width * height * 4; // RGBA bytes
-          memoryUsed = (textureMemory / (1024 * 1024)); // Convert to MB
-          memoryTotal = 256; // Typical GPU memory estimate
-        }
-        
-        updateMetrics({
-          fps,
-          memoryUsed,
-          memoryTotal,
-          textureCount: textureCountRef.current,
-          bufferCount: bufferCountRef.current,
-          drawCalls: frameCountRef.current,
-        });
-        
-        frameCountRef.current = 0;
-        lastFpsUpdateRef.current = now;
-      }
-
       animationFrameRef.current = requestAnimationFrame(render);
     };
 
@@ -283,8 +234,6 @@ export function WaterfallDisplay({
       if (gl) {
         gl.deleteProgram(program);
         gl.deleteTexture(texture);
-        gl.deleteBuffer(positionBuffer);
-        gl.deleteBuffer(texCoordBuffer);
       }
     };
   }, [fftSize, height]);

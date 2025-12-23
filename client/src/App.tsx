@@ -1,6 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { CommandPalette } from "@/components/CommandPalette";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -10,9 +9,7 @@ import Spectrum from "./pages/Spectrum";
 import Device from "./pages/Device";
 import Recording from "./pages/Recording";
 import Telemetry from "./pages/Telemetry";
-import { Scanner } from "./pages/Scanner";
-import Dashboard from "./pages/Dashboard";
-
+import AIAssistant from "./pages/AIAssistant";
 
 function Router() {
   return (
@@ -21,10 +18,8 @@ function Router() {
         <Route path={"/"} component={Spectrum} />
         <Route path={"/device"} component={Device} />
         <Route path={"/recording"} component={Recording} />
-        <Route path={"/scanner"} component={Scanner} />
         <Route path={"/telemetry"} component={Telemetry} />
-        <Route path={"/dashboard"} component={Dashboard} />
-
+        <Route path={"/ai-assistant"} component={AIAssistant} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
         <Route component={NotFound} />
@@ -47,7 +42,6 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
-          <CommandPalette />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

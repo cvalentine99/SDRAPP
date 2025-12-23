@@ -9,18 +9,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
-import { WebSocketStatus } from "@/components/WebSocketStatus";
-import { FloatingAIChat } from "@/components/FloatingAIChat";
 import {
   Activity,
   Database,
   Radio,
-  Radar,
   Settings,
   User,
   Waves,
   Zap,
-  LayoutDashboard,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -42,9 +38,8 @@ export function SDRLayout({ children }: SDRLayoutProps) {
     { path: "/", label: "Spectrum", icon: Waves },
     { path: "/device", label: "Device", icon: Radio },
     { path: "/recording", label: "Recording", icon: Database },
-    { path: "/scanner", label: "Scanner", icon: Radar },
-    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/telemetry", label: "Telemetry", icon: Activity },
+    { path: "/ai-assistant", label: "AI Assistant", icon: Zap },
   ];
 
   return (
@@ -92,9 +87,8 @@ export function SDRLayout({ children }: SDRLayoutProps) {
             })}
           </nav>
 
-          {/* WebSocket Status & User Profile */}
+          {/* User Profile */}
           <div className="flex items-center gap-4">
-            <WebSocketStatus />
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -137,9 +131,6 @@ export function SDRLayout({ children }: SDRLayoutProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 relative">{children}</main>
-
-      {/* Floating AI Chat (Global) */}
-      <FloatingAIChat />
 
       {/* Bottom HUD Status Bar */}
       <footer className="border-t border-border bg-card/50 backdrop-blur">

@@ -13,221 +13,33 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
-import { generateSigMFMetadata, downloadSigMFMetadata } from "@/lib/sigmf";
+import { useState } from "react";
 
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
-  const [currentFileSize, setCurrentFileSize] = useState(0);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
 
-  const utils = trpc.useUtils();
-  const deviceConfig = trpc.device.getConfig.useQuery();
-  const recordings = trpc.recording.list.useQuery();
-  const createRecording = trpc.recording.create.useMutation({
-    onSuccess: () => {
-      utils.recording.list.invalidate();
-      toast.success("Recording saved successfully");
+  // Simulated recording history
+  const recordings = [
+    {
+      id: 1,
+      filename: "capture_915MHz_20250123_102345.sigmf",
+      frequency: "915.0 MHz",
+      sampleRate: "10 MSPS",
+      duration: "5m 23s",
+      size: "3.2 GB",
+      timestamp: "2025-01-23 10:23:45",
     },
-    onError: (error) => {
-      toast.error(`Failed to save recording: ${error.message}`);
+    {
+      id: 2,
+      filename: "capture_2.4GHz_20250123_095612.sigmf",
+      frequency: "2.4 GHz",
+      sampleRate: "20 MSPS",
+      duration: "2m 15s",
+      size: "2.7 GB",
+      timestamp: "2025-01-23 09:56:12",
     },
-  });
-  const deleteRecording = trpc.recording.delete.useMutation({
-    onSuccess: () => {
-      utils.recording.list.invalidate();
-      toast.success("Recording deleted");
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete recording: ${error.message}`);
-    },
-  });
-  const uploadIQData = trpc.recording.uploadIQData.useMutation({
-    onError: (error) => {
-      toast.error(`Failed to upload IQ data: ${error.message}`);
-    },
-  });
-  
-  const startIQRecording = trpc.recording.startIQRecording.useMutation();
-  const uploadRecordedIQ = trpc.recording.uploadRecordedIQ.useMutation();
-
-  // Update recording duration timer
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording && recordingStartTime) {
-      interval = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-        setRecordingDuration(elapsed);
-        
-        // Simulate file size growth (10 MSPS * 2 bytes/sample * 2 channels = 40 MB/s)
-        const sampleRate = parseFloat(deviceConfig.data?.sampleRate || "10");
-        const bytesPerSecond = sampleRate * 1e6 * 2 * 2; // I/Q, 16-bit samples
-        setCurrentFileSize(elapsed * bytesPerSecond);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording, recordingStartTime, deviceConfig.data?.sampleRate]);
-
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    setRecordingStartTime(Date.now());
-    setRecordingDuration(0);
-    setCurrentFileSize(0);
-    toast.success("Recording started");
-  };
-
-  const handleStopRecording = async () => {
-    if (!deviceConfig.data || !recordingStartTime) return;
-
-    setIsRecording(false);
-    toast.info("Saving recording...");
-
-    try {
-      // Generate filename
-      const timestamp = new Date(recordingStartTime).toISOString().replace(/[:.]/g, "-").slice(0, -5);
-      const freq = deviceConfig.data.centerFrequency.replace(".", "_");
-      const filename = `capture_${freq}MHz_${timestamp}`;
-
-      // Try hardware IQ recording first, fall back to simulated if unavailable
-      let iqData: Uint8Array;
-      try {
-        const result = await startIQRecording.mutateAsync({
-          frequency: parseFloat(deviceConfig.data.centerFrequency),
-          sampleRate: parseFloat(deviceConfig.data.sampleRate),
-          gain: deviceConfig.data.gain,
-          duration: recordingDuration,
-          filename,
-        });
-        
-        // Upload recorded IQ file to S3
-        const uploadResult = await uploadRecordedIQ.mutateAsync({
-          tempFile: result.tempFile,
-          filename,
-          recordingId: 0, // Will be set after createRecording
-        });
-        
-        // Read the IQ data for upload (already in S3, but we need the data for metadata)
-        iqData = new Uint8Array(0); // Placeholder since already uploaded
-        
-        toast.success("Hardware IQ recording captured");
-      } catch (hardwareError) {
-        toast.warning("Hardware unavailable, using simulated IQ data");
-        
-        // Fall back to simulated IQ data
-        const numSamples = Math.floor(currentFileSize / 8);
-      
-      // Prevent OOM: limit to 50MB of IQ data (~6.5M samples)
-      const MAX_SAMPLES = 6_500_000;
-      if (numSamples > MAX_SAMPLES) {
-        toast.error(`Recording too large (${(currentFileSize / 1024 / 1024).toFixed(1)}MB). Maximum 50MB.`);
-        setIsRecording(false);
-        return;
-      }
-      
-        const iqDataFloat = new Float32Array(numSamples * 2);
-        const sampleRate = parseFloat(deviceConfig.data.sampleRate) * 1e6;
-        
-        for (let i = 0; i < numSamples; i++) {
-          const t = i / sampleRate;
-          const phase = 2 * Math.PI * 1e6 * t;
-          iqDataFloat[i * 2] = 0.5 * Math.cos(phase) + (Math.random() - 0.5) * 0.1;
-          iqDataFloat[i * 2 + 1] = 0.5 * Math.sin(phase) + (Math.random() - 0.5) * 0.1;
-        }
-        
-        iqData = new Uint8Array(iqDataFloat.buffer);
-      }
-      
-      // Upload IQ data to S3 with progress tracking
-      setIsUploading(true);
-      setUploadProgress(0);
-      
-      // Simulate upload progress (in production, use actual upload progress from S3)
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90; // Stop at 90% until upload completes
-          }
-          return prev + 10;
-        });
-      }, 200);
-      
-      try {
-        // Convert iqData to base64 for upload
-        let binary = '';
-        const chunkSize = 0x8000; // 32KB chunks
-        for (let i = 0; i < iqData.length; i += chunkSize) {
-          binary += String.fromCharCode.apply(null, Array.from(iqData.subarray(i, i + chunkSize)));
-        }
-        const base64Data = btoa(binary);
-        
-        const { s3Url, s3Key } = await uploadIQData.mutateAsync({
-          filename: `${filename}.sigmf-data`,
-          data: base64Data,
-        });
-        
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-        toast.success("IQ data uploaded successfully");
-        
-        // Continue with metadata save...
-        
-        // Save recording metadata
-        await createRecording.mutateAsync({
-        filename: `${filename}.sigmf`,
-        s3Key,
-        s3Url,
-        centerFrequency: deviceConfig.data.centerFrequency,
-        sampleRate: deviceConfig.data.sampleRate,
-        gain: deviceConfig.data.gain,
-        duration: recordingDuration,
-        fileSize: formatFileSize(currentFileSize),
-        author: "SDR Operator",
-        description: "Captured signal data",
-        hardware: "Ettus B210",
-      });
-
-        setRecordingStartTime(null);
-        setRecordingDuration(0);
-        setCurrentFileSize(0);
-        setUploadProgress(0);
-        setIsUploading(false); // Reset uploading state
-      } catch (error) {
-        clearInterval(progressInterval);
-        setIsUploading(false);
-        setUploadProgress(0);
-        toast.error("Failed to save recording");
-        console.error(error);
-      }
-    } catch (error) {
-      toast.error("Failed to stop recording");
-      console.error(error);
-    }
-  };
-
-  const handleDeleteRecording = (id: number, filename: string) => {
-    if (confirm(`Delete recording "${filename}"?`)) {
-      deleteRecording.mutate({ id });
-    }
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-  };
+  ];
 
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">
@@ -271,7 +83,7 @@ export default function Recording() {
                         <div className="bg-black/50 rounded p-2 border border-border">
                           <div className="text-muted-foreground">File Size</div>
                           <div className="text-primary font-mono">
-                            {formatFileSize(currentFileSize)}
+                            {(recordingDuration * 20).toFixed(0)} MB
                           </div>
                         </div>
                         <div className="bg-black/50 rounded p-2 border border-border">
@@ -281,26 +93,6 @@ export default function Recording() {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ) : isUploading ? (
-                    <div className="text-center">
-                      <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-secondary flex items-center justify-center">
-                        <div className="text-2xl font-mono text-secondary">
-                          {uploadProgress}%
-                        </div>
-                      </div>
-                      <p className="text-xl font-mono text-secondary mb-4">
-                        UPLOADING TO S3
-                      </p>
-                      <div className="w-full bg-black/50 rounded-full h-3 border border-secondary/30 overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 neon-glow-cyan"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {uploadProgress < 100 ? 'Uploading IQ data...' : 'Finalizing...'}
-                      </p>
                     </div>
                   ) : (
                     <div className="text-center">
@@ -324,7 +116,14 @@ export default function Recording() {
                   className="gap-2 box-glow-pink"
                   size="lg"
                   disabled={isRecording}
-                  onClick={handleStartRecording}
+                  onClick={() => {
+                    setIsRecording(true);
+                    const interval = setInterval(() => {
+                      setRecordingDuration((prev) => prev + 1);
+                    }, 1000);
+                    // Store interval ID for cleanup
+                    (window as any).recordingInterval = interval;
+                  }}
                 >
                   <Play className="w-5 h-5" />
                   START RECORDING
@@ -334,7 +133,11 @@ export default function Recording() {
                   className="gap-2"
                   size="lg"
                   disabled={!isRecording}
-                  onClick={handleStopRecording}
+                  onClick={() => {
+                    setIsRecording(false);
+                    setRecordingDuration(0);
+                    clearInterval((window as any).recordingInterval);
+                  }}
                 >
                   <Square className="w-5 h-5" />
                   STOP RECORDING
@@ -511,7 +314,7 @@ export default function Recording() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {recordings.data?.map((recording) => (
+              {recordings.map((recording) => (
                 <div
                   key={recording.id}
                   className="bg-black/50 rounded p-3 border border-border hover:border-primary/50 transition-colors"
@@ -528,13 +331,13 @@ export default function Recording() {
                         <div>
                           <span className="text-muted-foreground">Freq: </span>
                           <span className="text-secondary">
-                            {recording.centerFrequency} MHz
+                            {recording.frequency}
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Rate: </span>
                           <span className="text-secondary">
-                            {recording.sampleRate} MSPS
+                            {recording.sampleRate}
                           </span>
                         </div>
                         <div>
@@ -542,17 +345,17 @@ export default function Recording() {
                             Duration:{" "}
                           </span>
                           <span className="text-primary">
-                            {formatDuration(recording.duration)}
+                            {recording.duration}
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Size: </span>
-                          <span className="text-primary">{recording.fileSize}</span>
+                          <span className="text-primary">{recording.size}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Time: </span>
                           <span className="text-muted-foreground">
-                            {new Date(recording.createdAt).toLocaleString()}
+                            {recording.timestamp}
                           </span>
                         </div>
                       </div>
@@ -561,45 +364,15 @@ export default function Recording() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="gap-2 border-primary hover:box-glow-pink"
-                        onClick={() => {
-                          // Download and visualize IQ data
-                          window.open(recording.s3Url, '_blank');
-                          toast.success("Opening IQ data file");
-                        }}
-                      >
-                        <Play className="w-3 h-3" />
-                        Play
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
                         className="gap-2 border-secondary hover:box-glow-cyan"
-                        onClick={() => {
-                          const metadata = generateSigMFMetadata({
-                            centerFrequency: recording.centerFrequency,
-                            sampleRate: recording.sampleRate,
-                            gain: recording.gain,
-                            duration: recording.duration,
-                            author: recording.author || undefined,
-                            description: recording.description || undefined,
-                            license: recording.license || undefined,
-                            hardware: recording.hardware || undefined,
-                            location: recording.location || undefined,
-                            tags: recording.tags || undefined,
-                          });
-                          downloadSigMFMetadata(metadata, recording.filename);
-                          toast.success("SigMF metadata downloaded");
-                        }}
                       >
                         <Download className="w-3 h-3" />
-                        Metadata
+                        Download
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        onClick={() => handleDeleteRecording(recording.id, recording.filename)}
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>

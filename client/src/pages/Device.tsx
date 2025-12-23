@@ -20,10 +20,7 @@ import {
   Radio,
   Zap,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { WebSocketDiagnostics } from "@/components/WebSocketDiagnostics";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
+import { useState } from "react";
 
 export default function Device() {
   const [dcOffsetCorrection, setDcOffsetCorrection] = useState(true);
@@ -32,32 +29,6 @@ export default function Device() {
   const [lnaGain, setLnaGain] = useState([30]);
   const [tiaGain, setTiaGain] = useState([12]);
   const [pgaGain, setPgaGain] = useState([20]);
-
-  // Fetch current device configuration
-  const { data: config, isLoading } = trpc.device.getConfig.useQuery();
-
-  // Hardware control mutations
-  const setFrequency = trpc.device.setFrequency.useMutation({
-    onSuccess: () => toast.success("Frequency updated"),
-    onError: (err) => toast.error(`Failed to set frequency: ${err.message}`),
-  });
-
-  const setGain = trpc.device.setGain.useMutation({
-    onSuccess: () => toast.success("Gain updated"),
-    onError: (err) => toast.error(`Failed to set gain: ${err.message}`),
-  });
-
-  const setSampleRate = trpc.device.setSampleRate.useMutation({
-    onSuccess: () => toast.success("Sample rate updated"),
-    onError: (err) => toast.error(`Failed to set sample rate: ${err.message}`),
-  });
-
-  // Load config into state when available
-  useEffect(() => {
-    if (config) {
-      setLnaGain([config.gain]);
-    }
-  }, [config]);
 
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">
@@ -297,10 +268,7 @@ export default function Device() {
                     </div>
                     <Slider
                       value={lnaGain}
-                      onValueChange={(value) => {
-                        setLnaGain(value);
-                        setGain.mutate({ gain: value[0] });
-                      }}
+                      onValueChange={setLnaGain}
                       max={40}
                       step={1}
                       className="[&_[role=slider]]:border-primary [&_[role=slider]]:bg-primary"
@@ -431,21 +399,6 @@ export default function Device() {
                   real-time analysis and visualization.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* WebSocket Connection Settings */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="w-4 h-4 text-secondary" />
-                <span className="neon-glow-cyan text-secondary">
-                  WEBSOCKET DIAGNOSTICS
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <WebSocketDiagnostics />
             </CardContent>
           </Card>
 
