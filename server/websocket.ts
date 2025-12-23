@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
+import { getHardwareManager, type FFTData as HardwareFFTData } from "./hardware-manager";
 
 interface FFTData {
   timestamp: number;
@@ -21,14 +22,13 @@ export function initializeWebSocket(server: Server) {
       try {
         const data = JSON.parse(message.toString());
         
-        // Handle client commands (e.g., start/stop streaming, change config)
+        // Handle client commands
         if (data.type === "subscribe") {
           console.log("[WebSocket] Client subscribed to FFT stream");
-          // Start sending simulated data
-          startSimulatedStream(ws);
+          subscribeClient(ws);
         } else if (data.type === "unsubscribe") {
           console.log("[WebSocket] Client unsubscribed from FFT stream");
-          stopSimulatedStream(ws);
+          unsubscribeClient(ws);
         }
       } catch (error) {
         console.error("[WebSocket] Error parsing message:", error);
@@ -37,7 +37,7 @@ export function initializeWebSocket(server: Server) {
 
     ws.on("close", () => {
       console.log("[WebSocket] Client disconnected");
-      stopSimulatedStream(ws);
+      unsubscribeClient(ws);
     });
 
     ws.on("error", (error) => {
@@ -48,65 +48,42 @@ export function initializeWebSocket(server: Server) {
   console.log("[WebSocket] Server initialized on /api/ws");
 }
 
-// Simulated FFT data generation for testing
-const streamIntervals = new Map<WebSocket, NodeJS.Timeout>();
+// Client subscription management
+const subscribedClients = new Set<WebSocket>();
+let hardwareListenerAttached = false;
 
-function startSimulatedStream(ws: WebSocket) {
-  // Clear any existing interval
-  stopSimulatedStream(ws);
-
-  // Generate simulated FFT data at 60 FPS
-  const interval = setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-      const fftData: FFTData = generateSimulatedFFT();
-      ws.send(JSON.stringify(fftData));
-    } else {
-      stopSimulatedStream(ws);
+function subscribeClient(ws: WebSocket) {
+  subscribedClients.add(ws);
+  
+  // Attach hardware manager listener if not already attached
+  if (!hardwareListenerAttached) {
+    const hwManager = getHardwareManager();
+    
+    hwManager.on("fft", (fftData: HardwareFFTData) => {
+      broadcastFFTData(fftData);
+    });
+    
+    hardwareListenerAttached = true;
+    
+    // Auto-start hardware if not running
+    const status = hwManager.getStatus();
+    if (!status.isRunning) {
+      hwManager.start().catch((error) => {
+        console.error("[WebSocket] Failed to start hardware:", error);
+      });
     }
-  }, 1000 / 60); // 60 FPS
-
-  streamIntervals.set(ws, interval);
-}
-
-function stopSimulatedStream(ws: WebSocket) {
-  const interval = streamIntervals.get(ws);
-  if (interval) {
-    clearInterval(interval);
-    streamIntervals.delete(ws);
   }
 }
 
-function generateSimulatedFFT(): FFTData {
-  const fftSize = 2048;
-  const data: number[] = [];
-
-  // Generate simulated spectrum with some peaks
-  for (let i = 0; i < fftSize; i++) {
-    // Base noise floor around -100 dBm
-    let value = -100 + Math.random() * 10;
-
-    // Add some signal peaks
-    if (i > 300 && i < 350) {
-      // Strong carrier at ~915 MHz
-      value = -45 + Math.random() * 5;
-    } else if (i > 550 && i < 580) {
-      // Medium signal
-      value = -65 + Math.random() * 5;
-    } else if (i > 800 && i < 820) {
-      // Weak signal
-      value = -80 + Math.random() * 5;
-    }
-
-    data.push(value);
-  }
-
-  return {
-    timestamp: Date.now(),
-    centerFrequency: 915.0, // MHz
-    sampleRate: 10.0, // MSPS
-    fftSize,
-    data,
-  };
+function unsubscribeClient(ws: WebSocket) {
+  subscribedClients.delete(ws);
+  
+  // If no more clients, optionally stop hardware
+  // (commented out to keep hardware running)
+  // if (subscribedClients.size === 0) {
+  //   const hwManager = getHardwareManager();
+  //   hwManager.stop();
+  // }
 }
 
 // Broadcast function for sending data to all connected clients

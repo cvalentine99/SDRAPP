@@ -314,3 +314,18 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [ ] Add waterfall replay for recorded signals (future enhancement)
 - [ ] Implement playback controls (play/pause/seek) (future enhancement)
 
+
+## Hardware Integration (CRITICAL - COMPLETED)
+- [x] Create C++ UHD streaming daemon (sdr_streamer.cpp)
+- [x] Implement FFT computation in C++ using FFTW3
+- [x] Output JSON FFT data to stdout for Node.js consumption
+- [x] Build Node.js hardware manager (server/hardware-manager.ts)
+- [x] Spawn and control C++ daemon process
+- [x] Add hardware control tRPC procedures (setFrequency, setGain, setSampleRate)
+- [x] Replace simulated WebSocket FFT with real hardware stream
+- [x] Add hardware status monitoring component (HardwareStatus.tsx)
+- [x] Implement error recovery and automatic reconnection
+- [x] Create CMakeLists.txt build system
+- [x] Write deployment instructions for ARM64 (DEPLOYMENT.md)
+- [x] Write hardware README with troubleshooting guide
+

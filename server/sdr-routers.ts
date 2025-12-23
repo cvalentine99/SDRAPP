@@ -11,6 +11,7 @@ import {
 } from "./sdr-db";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
+import { getHardwareManager } from "./hardware-manager";
 
 // ============================================================================
 // Device Configuration Router
@@ -85,6 +86,47 @@ export const deviceRouter = router({
       });
 
       return config;
+    }),
+
+  startHardware: protectedProcedure.mutation(async () => {
+    const hwManager = getHardwareManager();
+    await hwManager.start();
+    return { success: true };
+  }),
+
+  stopHardware: protectedProcedure.mutation(async () => {
+    const hwManager = getHardwareManager();
+    await hwManager.stop();
+    return { success: true };
+  }),
+
+  getHardwareStatus: protectedProcedure.query(async () => {
+    const hwManager = getHardwareManager();
+    return hwManager.getStatus();
+  }),
+
+  setFrequency: protectedProcedure
+    .input(z.object({ frequency: z.number() }))
+    .mutation(async ({ input }) => {
+      const hwManager = getHardwareManager();
+      await hwManager.updateConfig({ freq: input.frequency });
+      return { success: true };
+    }),
+
+  setGain: protectedProcedure
+    .input(z.object({ gain: z.number() }))
+    .mutation(async ({ input }) => {
+      const hwManager = getHardwareManager();
+      await hwManager.updateConfig({ gain: input.gain });
+      return { success: true };
+    }),
+
+  setSampleRate: protectedProcedure
+    .input(z.object({ sampleRate: z.number() }))
+    .mutation(async ({ input }) => {
+      const hwManager = getHardwareManager();
+      await hwManager.updateConfig({ rate: input.sampleRate });
+      return { success: true };
     }),
 });
 
