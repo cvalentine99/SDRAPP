@@ -348,3 +348,23 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Implement results table with detected signals
 - [x] Add export functionality for scan results (CSV)
 
+
+## Code Review Fixes (CRITICAL)
+
+### P0 - Critical Build/Security Issues
+- [x] Fix Telemetry.tsx missing imports and truncated JSX
+- [x] Fix Recording.tsx Browser Buffer crash (line 118)
+- [x] Fix path traversal vulnerability in S3 upload (sdr-routers.ts:186)
+- [x] Fix Buffer offset bug in IQ analysis (sdr-routers.ts:530)
+
+### P1 - High Priority Memory/Performance
+- [x] Fix OOM in recording by adding 50MB limit
+- [x] Add upload size limits (client 50MB + server 67MB base64 validation)
+- [x] Fix isUploading state bug in Recording.tsx
+- [x] Fix WebGL buffer leak in WaterfallDisplay.tsx
+
+### P2 - Medium Priority Reliability
+- [x] Debounce config updates in Spectrum.tsx (300ms debounce)
+- [x] Add exponential backoff with jitter to WebSocket reconnection
+- [x] Fix division by zero in IQ analysis (sdr-routers.ts:547)
+

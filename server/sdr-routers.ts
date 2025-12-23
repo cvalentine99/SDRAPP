@@ -175,15 +175,19 @@ export const recordingRouter = router({
     .input(
       z.object({
         filename: z.string(),
-        data: z.string(), // base64 encoded binary IQ data
+        data: z.string().max(67_000_000), // ~50MB base64 (base64 is 33% larger than binary)
       })
     )
     .mutation(async ({ ctx, input }) => {
       // Decode base64 to binary
       const buffer = Buffer.from(input.data, "base64");
       
+      // Sanitize filename to prevent path traversal
+      const path = await import("path");
+      const sanitized = path.basename(input.filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+      
       // Generate unique S3 key with user ID to prevent conflicts
-      const s3Key = `recordings/${ctx.user.id}/${input.filename}`;
+      const s3Key = `recordings/${ctx.user.id}/${sanitized}`;
       
       // Upload to S3
       const { url } = await storagePut(
@@ -522,7 +526,12 @@ export const aiRouter = router({
       const buffer = Buffer.from(input.fileData, "base64");
       
       // Parse IQ data (assuming complex float32: IQIQIQ...)
-      const samples = new Float32Array(buffer.buffer);
+      // Must use byteOffset and byteLength to handle Node.js Buffer correctly
+      const samples = new Float32Array(
+        buffer.buffer,
+        buffer.byteOffset,
+        buffer.byteLength / 4  // Float32 = 4 bytes
+      );
       const numSamples = Math.floor(samples.length / 2);
       
       // Extract basic signal characteristics
@@ -535,7 +544,7 @@ export const aiRouter = router({
         avgPower += power;
         if (power > maxPower) maxPower = power;
       }
-      avgPower /= numSamples;
+      avgPower = numSamples > 0 ? avgPower / numSamples : 0;
       
       // Convert to dBFS
       const avgPowerDB = 10 * Math.log10(avgPower + 1e-10);

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Pause, Play, Radio, SkipBack, SkipForward } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useDebouncedCallback } from "use-debounce";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplayWithDetection } from "@/components/SpectrographDisplayWithDetection";
 
@@ -93,10 +94,16 @@ export default function Spectrum() {
     }
   }, [deviceConfig.data]);
 
+  // Debounced config update to avoid hammering database
+  const debouncedUpdateConfig = useDebouncedCallback(
+    (config) => updateConfig.mutate(config),
+    300
+  );
+
   const handleFrequencyChange = (newFreq: string) => {
     setFrequency(newFreq);
     if (deviceConfig.data) {
-      updateConfig.mutate({
+      debouncedUpdateConfig({
         centerFrequency: newFreq,
         sampleRate: deviceConfig.data.sampleRate,
         gain: deviceConfig.data.gain,
@@ -118,7 +125,7 @@ export default function Spectrum() {
   const handleGainChange = (newGain: number[]) => {
     setGain(newGain);
     if (deviceConfig.data) {
-      updateConfig.mutate({
+      debouncedUpdateConfig({
         centerFrequency: deviceConfig.data.centerFrequency,
         sampleRate: deviceConfig.data.sampleRate,
         gain: newGain[0] || 50,

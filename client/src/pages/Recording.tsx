@@ -103,6 +103,15 @@ export default function Recording() {
       
       // For now, use simulated IQ data
       const numSamples = Math.floor(currentFileSize / 8);
+      
+      // Prevent OOM: limit to 50MB of IQ data (~6.5M samples)
+      const MAX_SAMPLES = 6_500_000;
+      if (numSamples > MAX_SAMPLES) {
+        toast.error(`Recording too large (${(currentFileSize / 1024 / 1024).toFixed(1)}MB). Maximum 50MB.`);
+        setIsRecording(false);
+        return;
+      }
+      
       const iqData = new Float32Array(numSamples * 2);
       const sampleRate = parseFloat(deviceConfig.data.sampleRate) * 1e6;
       
@@ -113,8 +122,14 @@ export default function Recording() {
         iqData[i * 2 + 1] = 0.5 * Math.sin(phase) + (Math.random() - 0.5) * 0.1;
       }
       
-      const buffer = Buffer.from(iqData.buffer);
-      const base64Data = buffer.toString('base64');
+      // Use browser-native approach (Buffer is Node.js only)
+      const uint8 = new Uint8Array(iqData.buffer);
+      let binary = '';
+      const chunkSize = 0x8000; // 32KB chunks to avoid call stack size exceeded
+      for (let i = 0; i < uint8.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, Array.from(uint8.subarray(i, i + chunkSize)));
+      }
+      const base64Data = btoa(binary);
       
       // Upload IQ data to S3 with progress tracking
       setIsUploading(true);
@@ -162,6 +177,7 @@ export default function Recording() {
         setRecordingDuration(0);
         setCurrentFileSize(0);
         setUploadProgress(0);
+        setIsUploading(false); // Reset uploading state
       } catch (error) {
         clearInterval(progressInterval);
         setIsUploading(false);

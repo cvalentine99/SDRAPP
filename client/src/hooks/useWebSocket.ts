@@ -28,6 +28,8 @@ export function useWebSocket(): UseWebSocketReturn {
   const [fftData, setFFTData] = useState<FFTData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataRate, setDataRate] = useState(0);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [fftHistory, setFFTHistory] = useState<FFTData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1); // -1 = live mode
   const [reconnectInterval, setReconnectInterval] = useState(3000); // Configurable
@@ -48,6 +50,7 @@ export function useWebSocket(): UseWebSocketReturn {
         console.log("[WebSocket] Connected");
         setIsConnected(true);
         setError(null);
+        setReconnectAttempts(0); // Reset backoff on successful connection
 
         // Re-subscribe if previously subscribed
         if (isSubscribedRef.current) {
@@ -92,10 +95,16 @@ export function useWebSocket(): UseWebSocketReturn {
 
         // Only attempt to reconnect if not unmounting
         if (!isUnmountingRef.current) {
+          // Exponential backoff with jitter to avoid thundering herd
+          const backoff = Math.min(30000, reconnectInterval * Math.pow(2, reconnectAttempts));
+          const jitter = Math.random() * 1000;
+          const delay = backoff + jitter;
+          
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log("[WebSocket] Attempting to reconnect...");
+            console.log(`[WebSocket] Attempting to reconnect (attempt ${reconnectAttempts + 1}, delay ${Math.round(delay)}ms)...`);
+            setReconnectAttempts(prev => prev + 1);
             connect();
-          }, reconnectInterval);
+          }, delay);
         }
       };
 

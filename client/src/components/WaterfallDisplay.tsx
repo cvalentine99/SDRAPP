@@ -235,6 +235,8 @@ export function WaterfallDisplay({
       if (gl) {
         gl.deleteProgram(program);
         gl.deleteTexture(texture);
+        gl.deleteBuffer(positionBuffer);
+        gl.deleteBuffer(texCoordBuffer);
       }
     };
   }, [fftSize, height]);
