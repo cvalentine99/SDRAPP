@@ -3,10 +3,6 @@ import { protectedProcedure, router } from "./_core/trpc";
 import {
   getDeviceConfig,
   upsertDeviceConfig,
-  getFrequencyBookmarks,
-  createFrequencyBookmark,
-  updateFrequencyBookmark,
-  deleteFrequencyBookmark,
   getRecordings,
   createRecording,
   deleteRecording,
@@ -88,57 +84,6 @@ export const deviceRouter = router({
       });
 
       return config;
-    }),
-});
-
-// ============================================================================
-// Frequency Bookmarks Router
-// ============================================================================
-
-export const bookmarksRouter = router({
-  list: protectedProcedure.query(async ({ ctx }) => {
-    return await getFrequencyBookmarks(ctx.user.id);
-  }),
-
-  create: protectedProcedure
-    .input(
-      z.object({
-        name: z.string(),
-        frequency: z.string(),
-        description: z.string().optional(),
-        category: z.string().optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      return await createFrequencyBookmark({
-        userId: ctx.user.id,
-        ...input,
-      });
-    }),
-
-  update: protectedProcedure
-    .input(
-      z.object({
-        id: z.number(),
-        name: z.string().optional(),
-        frequency: z.string().optional(),
-        description: z.string().optional(),
-        category: z.string().optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
-      // Filter out undefined values to only update provided fields
-      const updateData = Object.fromEntries(
-        Object.entries(data).filter(([_, value]) => value !== undefined)
-      );
-      return await updateFrequencyBookmark(id, ctx.user.id, updateData);
-    }),
-
-  delete: protectedProcedure
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ ctx, input }) => {
-      return await deleteFrequencyBookmark(input.id, ctx.user.id);
     }),
 });
 

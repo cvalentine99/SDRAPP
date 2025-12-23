@@ -231,3 +231,13 @@
 - [x] AI analysis integration with extracted signal features
 - [x] Upload progress indicator and file size limits
 - [x] Display analysis results with visualizations
+
+## Remove Broken Bookmark Feature
+- [x] Remove BookmarkPanel component from Spectrum page
+- [x] Remove bookmark tRPC procedures from sdr-routers.ts
+- [x] Remove bookmark database helpers from sdr-db.ts
+- [x] Remove frequencyBookmarks table from database schema
+- [x] Remove bookmark tests
+- [x] Remove preset bookmark packs
+- [x] Remove BookmarkPanel component file
+- [x] Remove bookmark references from CommandPalette

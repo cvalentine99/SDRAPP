@@ -2,11 +2,9 @@ import { eq, desc } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   deviceConfigs,
-  frequencyBookmarks,
   recordings,
   aiConversations,
   type InsertDeviceConfig,
-  type InsertFrequencyBookmark,
   type InsertRecording,
   type InsertAIConversation,
 } from "../drizzle/schema";
@@ -53,58 +51,6 @@ export async function upsertDeviceConfig(config: InsertDeviceConfig) {
     const newConfig = await getDeviceConfig(config.userId);
     return newConfig!;
   }
-}
-
-// ============================================================================
-// Frequency Bookmark Helpers
-// ============================================================================
-
-export async function getFrequencyBookmarks(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
-
-  return await db
-    .select()
-    .from(frequencyBookmarks)
-    .where(eq(frequencyBookmarks.userId, userId))
-    .orderBy(desc(frequencyBookmarks.createdAt));
-}
-
-export async function createFrequencyBookmark(bookmark: InsertFrequencyBookmark) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db.insert(frequencyBookmarks).values(bookmark);
-  const bookmarks = await getFrequencyBookmarks(bookmark.userId);
-  return bookmarks[0]!;
-}
-
-export async function updateFrequencyBookmark(
-  id: number,
-  userId: number,
-  data: Partial<Omit<InsertFrequencyBookmark, "userId">>
-) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db
-    .update(frequencyBookmarks)
-    .set(data)
-    .where(eq(frequencyBookmarks.id, id));
-
-  const bookmarks = await getFrequencyBookmarks(userId);
-  return bookmarks.find((b) => b.id === id)!;
-}
-
-export async function deleteFrequencyBookmark(id: number, userId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  await db
-    .delete(frequencyBookmarks)
-    .where(eq(frequencyBookmarks.id, id));
-
-  return { success: true };
 }
 
 // ============================================================================

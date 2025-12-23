@@ -11,15 +11,12 @@ import {
 } from "@/components/ui/command";
 import {
   Activity,
-  Bookmark,
   Database,
   MessageSquare,
   Radio,
   Settings,
   Wifi,
 } from "lucide-react";
-import { trpc } from "@/lib/trpc";
-
 interface CommandPaletteProps {
   onTuneFrequency?: (frequency: string) => void;
 }
@@ -27,8 +24,6 @@ interface CommandPaletteProps {
 export function CommandPalette({ onTuneFrequency }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
-  const bookmarks = trpc.bookmarks.list.useQuery();
-
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -43,14 +38,6 @@ export function CommandPalette({ onTuneFrequency }: CommandPaletteProps) {
 
   const handleNavigate = (path: string) => {
     setLocation(path);
-    setOpen(false);
-  };
-
-  const handleTuneBookmark = (frequency: string) => {
-    if (onTuneFrequency) {
-      onTuneFrequency(frequency);
-    }
-    setLocation("/");
     setOpen(false);
   };
 
@@ -100,32 +87,6 @@ export function CommandPalette({ onTuneFrequency }: CommandPaletteProps) {
             <span>AI Assistant</span>
           </CommandItem>
         </CommandGroup>
-
-        {bookmarks.data && bookmarks.data.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Bookmarks">
-              {bookmarks.data.slice(0, 10).map((bookmark) => (
-                <CommandItem
-                  key={bookmark.id}
-                  onSelect={() => handleTuneBookmark(bookmark.frequency)}
-                  className="cursor-pointer"
-                >
-                  <Bookmark className="mr-2 h-4 w-4 text-primary" />
-                  <span className="flex-1">{bookmark.name}</span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {bookmark.frequency} MHz
-                  </span>
-                </CommandItem>
-              ))}
-              {bookmarks.data.length > 10 && (
-                <CommandItem disabled className="text-xs text-muted-foreground">
-                  +{bookmarks.data.length - 10} more bookmarks...
-                </CommandItem>
-              )}
-            </CommandGroup>
-          </>
-        )}
 
         <CommandSeparator />
         <CommandGroup heading="Quick Actions">

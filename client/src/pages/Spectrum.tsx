@@ -14,7 +14,7 @@ import { Pause, Play, Radio, SkipBack, SkipForward } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplayWithDetection } from "@/components/SpectrographDisplayWithDetection";
-import { BookmarkPanel } from "@/components/BookmarkPanel";
+
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useFrequencyDrag } from "@/hooks/useFrequencyDrag";
 import { trpc } from "@/lib/trpc";
@@ -413,8 +413,6 @@ export default function Spectrum() {
           </CardContent>
         </Card>
 
-        {/* Bookmarks */}
-        <BookmarkPanel onTuneToFrequency={handleFrequencyChange} />
 
         {/* FFT Configuration */}
         <Card className="bg-card border-border">

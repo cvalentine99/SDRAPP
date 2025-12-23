@@ -55,22 +55,6 @@ export type DeviceConfig = typeof deviceConfigs.$inferSelect;
 export type InsertDeviceConfig = typeof deviceConfigs.$inferInsert;
 
 /**
- * Frequency bookmarks for quick tuning
- */
-export const frequencyBookmarks = mysqlTable("frequency_bookmarks", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("user_id").notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  frequency: varchar("frequency", { length: 50 }).notNull(), // MHz
-  description: text("description"),
-  category: varchar("category", { length: 100 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export type FrequencyBookmark = typeof frequencyBookmarks.$inferSelect;
-export type InsertFrequencyBookmark = typeof frequencyBookmarks.$inferInsert;
-
-/**
  * Recording metadata for SigMF captures
  */
 export const recordings = mysqlTable("recordings", {
