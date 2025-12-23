@@ -84,10 +84,33 @@ export function Scanner() {
   }, [scanStatus]);
 
   const handleStartScan = () => {
+    // Validate scan parameters
+    const start = parseFloat(startFreq);
+    const stop = parseFloat(stopFreq);
+    const step = parseFloat(stepFreq);
+    
+    // Check frequency range
+    if (start >= stop) {
+      toast.error("Start frequency must be less than stop frequency");
+      return;
+    }
+    
+    // Check B210 hardware limits (70 MHz - 6 GHz)
+    if (start < 70 || stop > 6000) {
+      toast.error("Frequency must be within B210 range (70-6000 MHz)");
+      return;
+    }
+    
+    // Check step size
+    if (step <= 0 || step > (stop - start)) {
+      toast.error("Invalid step frequency");
+      return;
+    }
+    
     startScan.mutate({
-      startFreq: parseFloat(startFreq),
-      stopFreq: parseFloat(stopFreq),
-      stepFreq: parseFloat(stepFreq),
+      startFreq: start,
+      stopFreq: stop,
+      stepFreq: step,
       sampleRate: parseFloat(sampleRate),
       gain: parseFloat(gain),
       threshold: parseFloat(threshold),

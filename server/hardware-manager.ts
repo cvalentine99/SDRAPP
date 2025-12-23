@@ -44,6 +44,7 @@ export class HardwareManager extends EventEmitter {
   private status: HardwareStatus;
   private streamerPath: string;
   private lineBuffer: string = "";
+  private simulatedInterval?: NodeJS.Timeout;
 
   constructor(config: HardwareConfig) {
     super();
@@ -61,6 +62,17 @@ export class HardwareManager extends EventEmitter {
   }
 
   private findStreamerBinary(): string {
+    // Check environment variable first
+    if (process.env.SDR_STREAMER_PATH) {
+      const envPath = process.env.SDR_STREAMER_PATH;
+      if (fs.existsSync(envPath)) {
+        console.log(`[HardwareManager] Using SDR_STREAMER_PATH: ${envPath}`);
+        return envPath;
+      } else {
+        console.warn(`[HardwareManager] SDR_STREAMER_PATH set but binary not found: ${envPath}`);
+      }
+    }
+    
     const possiblePaths = [
       path.join(__dirname, "../hardware/build/sdr_streamer"),
       path.join(__dirname, "../hardware/sdr_streamer"),
@@ -279,7 +291,7 @@ export class HardwareManager extends EventEmitter {
     }, 1000 / 60);
 
     // Store interval for cleanup
-    (this as any).simulatedInterval = interval;
+    this.simulatedInterval = interval;
   }
 }
 

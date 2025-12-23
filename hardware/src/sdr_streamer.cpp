@@ -205,6 +205,13 @@ int UHD_SAFE_MAIN(int argc, char* argv[]) {
         // Receive samples
         size_t num_rx_samps = rx_stream->recv(&buffer.front(), buffer.size(), md, 3.0);
         
+        // Check for incomplete buffer
+        if (num_rx_samps < config.fft_size) {
+            std::cerr << "[SDR Streamer] Incomplete buffer (" << num_rx_samps 
+                      << " < " << config.fft_size << "), skipping" << std::endl;
+            continue;
+        }
+        
         // Check for errors
         if (md.error_code == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
             std::cerr << "[SDR Streamer] Timeout waiting for samples" << std::endl;

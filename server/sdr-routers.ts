@@ -281,18 +281,36 @@ export const recordingRouter = router({
         filename: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const fs = await import("fs");
+      const path = await import("path");
 
-      // Read IQ file
-      const iqData = fs.readFileSync(input.tempFile);
+      // Security: Restrict to temp directory and validate path
+      const tempDir = "/tmp/sdr-recordings";
+      const safePath = path.join(tempDir, path.basename(input.tempFile));
+      
+      // Prevent path traversal
+      if (!safePath.startsWith(tempDir)) {
+        throw new Error("Invalid file path");
+      }
+      
+      // Verify file exists
+      if (!fs.existsSync(safePath)) {
+        throw new Error("File not found");
+      }
 
-      // Upload to S3
-      const s3Key = `recordings/${input.recordingId}/${input.filename}.sigmf-data`;
+      // Read IQ file from safe path
+      const iqData = fs.readFileSync(safePath);
+
+      // Sanitize filename
+      const sanitizedFilename = path.basename(input.filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+      
+      // Upload to S3 with user ID isolation
+      const s3Key = `recordings/${ctx.user.id}/${input.recordingId}/${sanitizedFilename}.sigmf-data`;
       const { url, key } = await storagePut(s3Key, iqData, "application/octet-stream");
 
-      // Delete temp file
-      fs.unlinkSync(input.tempFile);
+      // Delete temp file from safe path
+      fs.unlinkSync(safePath);
 
       return { success: true, s3Url: url, s3Key: key };
     }),

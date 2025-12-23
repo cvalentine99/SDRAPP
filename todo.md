@@ -375,3 +375,12 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Remove unused imports and variables (fftDataRef, yOffset removed; HardDrive is used)
 - [x] Add Error Boundaries to visualization components (WaterfallDisplay, SpectrographDisplayWithDetection)
 
+
+## Round 2 Code Review Fixes (CRITICAL)
+- [x] Fix Telemetry.tsx truncation (FALSE ALARM - file is complete, 295 lines)
+- [x] Fix uploadRecordedIQ path traversal vulnerability (restricted to /tmp/sdr-recordings, user ID isolation)
+- [x] Add Scanner input validation (startFreq < stopFreq, 70-6000 MHz range, step size check)
+- [x] Add C++ bounds check in sdr_streamer.cpp (num_rx_samps < fft_size)
+- [x] Fix hardware-manager.ts type assertion (simulatedInterval property)
+- [x] Add SDR_STREAMER_PATH environment variable support
+
