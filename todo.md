@@ -384,3 +384,9 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Fix hardware-manager.ts type assertion (simulatedInterval property)
 - [x] Add SDR_STREAMER_PATH environment variable support
 
+
+## Final Polish (Round 3 Minor Items)
+- [x] Replace 33 console.log statements with structured logging (created logger.ts, updated hardware-manager.ts, websocket.ts)
+- [x] Wire real telemetry metrics from hardware manager (added telemetryRouter, wired to Telemetry.tsx)
+- [x] Add rate limiting for AI endpoints (20 req/min AI, 10 req/hr uploads, 100 req/min config)
+

@@ -9,6 +9,7 @@ import { spawn, ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 import * as path from "path";
 import * as fs from "fs";
+import { logger } from "./_core/logger";
 
 export interface FFTData {
   type?: string;
@@ -66,10 +67,10 @@ export class HardwareManager extends EventEmitter {
     if (process.env.SDR_STREAMER_PATH) {
       const envPath = process.env.SDR_STREAMER_PATH;
       if (fs.existsSync(envPath)) {
-        console.log(`[HardwareManager] Using SDR_STREAMER_PATH: ${envPath}`);
+        logger.info("HardwareManager", "Using SDR_STREAMER_PATH", { path: envPath });
         return envPath;
       } else {
-        console.warn(`[HardwareManager] SDR_STREAMER_PATH set but binary not found: ${envPath}`);
+        logger.warn("HardwareManager", "SDR_STREAMER_PATH set but binary not found", { path: envPath });
       }
     }
     
@@ -82,12 +83,12 @@ export class HardwareManager extends EventEmitter {
 
     for (const p of possiblePaths) {
       if (fs.existsSync(p)) {
-        console.log(`[HardwareManager] Found sdr_streamer at: ${p}`);
+        logger.info("HardwareManager", "Found sdr_streamer binary", { path: p });
         return p;
       }
     }
 
-    console.warn("[HardwareManager] sdr_streamer binary not found, will use simulated mode");
+    logger.warn("HardwareManager", "sdr_streamer binary not found, using simulated mode");
     return "";
   }
 
@@ -100,12 +101,12 @@ export class HardwareManager extends EventEmitter {
     }
 
     if (!this.streamerPath) {
-      console.warn("[HardwareManager] No sdr_streamer binary, starting in simulated mode");
+      logger.warn("HardwareManager", "Starting in simulated mode");
       this.startSimulatedMode();
       return;
     }
 
-    console.log("[HardwareManager] Starting sdr_streamer with config:", this.config);
+    logger.info("HardwareManager", "Starting sdr_streamer", { config: this.config });
 
     const args = [
       "--freq", this.config.freq.toString(),
@@ -126,18 +127,18 @@ export class HardwareManager extends EventEmitter {
     });
 
     this.process.stderr?.on("data", (data: Buffer) => {
-      console.error("[sdr_streamer]", data.toString().trim());
+      logger.error("sdr_streamer", data.toString().trim());
     });
 
     this.process.on("error", (error) => {
-      console.error("[HardwareManager] Process error:", error);
+      logger.error("HardwareManager", "Process error", { error: error.message });
       this.status.error = error.message;
       this.status.isRunning = false;
       this.emit("error", error);
     });
 
     this.process.on("exit", (code, signal) => {
-      console.log(`[HardwareManager] Process exited with code ${code}, signal ${signal}`);
+      logger.info("HardwareManager", "Process exited", { code, signal });
       this.status.isRunning = false;
       this.status.isConnected = false;
       this.process = null;
@@ -157,7 +158,7 @@ export class HardwareManager extends EventEmitter {
       return;
     }
 
-    console.log("[HardwareManager] Stopping sdr_streamer");
+    logger.info("HardwareManager", "Stopping sdr_streamer");
     
     this.process.kill("SIGTERM");
     
@@ -165,7 +166,7 @@ export class HardwareManager extends EventEmitter {
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
         if (this.process) {
-          console.warn("[HardwareManager] Force killing sdr_streamer");
+          logger.warn("HardwareManager", "Force killing sdr_streamer");
           this.process.kill("SIGKILL");
         }
         resolve();
@@ -239,7 +240,7 @@ export class HardwareManager extends EventEmitter {
           this.emit("fft", fftData);
         }
       } catch (error) {
-        console.error("[HardwareManager] Failed to parse JSON:", line);
+        logger.error("HardwareManager", "Failed to parse JSON", { line });
       }
     }
   }
@@ -248,7 +249,7 @@ export class HardwareManager extends EventEmitter {
    * Simulated mode for testing without hardware
    */
   private startSimulatedMode(): void {
-    console.log("[HardwareManager] Starting simulated FFT stream");
+    logger.info("HardwareManager", "Starting simulated FFT stream");
     
     this.status.isRunning = true;
     this.status.isConnected = true;

@@ -6,8 +6,19 @@ import {
   Network,
   Zap,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function Telemetry() {
+  // Fetch real telemetry metrics
+  const { data: metrics } = trpc.telemetry.getMetrics.useQuery(undefined, {
+    refetchInterval: 1000, // Update every second
+  });
+
+  const fftRate = metrics?.fftRate ?? 0;
+  const throughput = metrics?.throughput ?? 0;
+  const droppedFrames = metrics?.droppedFrames ?? 0;
+  const isConnected = metrics?.isConnected ?? false;
+
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">
       <div className="max-w-7xl mx-auto space-y-4">
@@ -23,7 +34,7 @@ export default function Telemetry() {
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-4xl font-mono text-primary mb-2">60</div>
+                <div className="text-4xl font-mono text-primary mb-2">{fftRate}</div>
                 <div className="text-xs text-muted-foreground">FPS</div>
               </div>
             </CardContent>
@@ -42,7 +53,7 @@ export default function Telemetry() {
             <CardContent>
               <div className="text-center">
                 <div className="text-4xl font-mono text-secondary mb-2">
-                  123
+                  {throughput}
                 </div>
                 <div className="text-xs text-muted-foreground">KB/s</div>
               </div>
@@ -77,7 +88,7 @@ export default function Telemetry() {
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-4xl font-mono text-secondary mb-2">0</div>
+                <div className="text-4xl font-mono text-secondary mb-2">{droppedFrames}</div>
                 <div className="text-xs text-muted-foreground">frames</div>
               </div>
             </CardContent>
@@ -209,8 +220,8 @@ export default function Telemetry() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">WebSocket Status</span>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-secondary animate-pulse box-glow-cyan" />
-                    <span className="font-mono text-secondary">CONNECTED</span>
+                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-secondary animate-pulse box-glow-cyan' : 'bg-muted'}`} />
+                    <span className="font-mono text-secondary">{isConnected ? 'CONNECTED' : 'DISCONNECTED'}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs">

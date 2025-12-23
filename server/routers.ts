@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { deviceRouter, recordingRouter, aiRouter, scannerRouter } from "./sdr-routers";
+import { deviceRouter, recordingRouter, aiRouter, scannerRouter, telemetryRouter } from "./sdr-routers";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -23,6 +23,7 @@ export const appRouter = router({
   recording: recordingRouter,
   ai: aiRouter,
   scanner: scannerRouter,
+  telemetry: telemetryRouter,
 
   // TODO: add additional feature routers here, e.g.
   // todo: router({

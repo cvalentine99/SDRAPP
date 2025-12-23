@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
 import { getHardwareManager, type FFTData as HardwareFFTData } from "./hardware-manager";
+import { logger } from "./_core/logger";
 
 interface FFTData {
   timestamp: number;
@@ -16,6 +17,7 @@ export function initializeWebSocket(server: Server) {
   wss = new WebSocketServer({ server, path: "/api/ws" });
 
   wss.on("connection", (ws: WebSocket) => {
+    logger.info("WebSocket", "Client connected", { totalClients: subscribedClients.size + 1 });
 
     ws.on("message", (message: Buffer) => {
       try {
@@ -28,16 +30,17 @@ export function initializeWebSocket(server: Server) {
           unsubscribeClient(ws);
         }
       } catch (error) {
-        console.error("[WebSocket] Error parsing message:", error);
+        logger.error("WebSocket", "Error parsing message", { error: error instanceof Error ? error.message : String(error) });
       }
     });
 
     ws.on("close", () => {
       unsubscribeClient(ws);
+      logger.info("WebSocket", "Client disconnected", { totalClients: subscribedClients.size });
     });
 
     ws.on("error", (error) => {
-      console.error("[WebSocket] Error:", error);
+      logger.error("WebSocket", "Client error", { error: error.message });
     });
   });
 }
@@ -63,7 +66,7 @@ function subscribeClient(ws: WebSocket) {
     const status = hwManager.getStatus();
     if (!status.isRunning) {
       hwManager.start().catch((error) => {
-        console.error("[WebSocket] Failed to start hardware:", error);
+        logger.error("WebSocket", "Failed to start hardware", { error: error.message });
       });
     }
   }

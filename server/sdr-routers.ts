@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   getDeviceConfig,
   upsertDeviceConfig,
@@ -15,6 +15,34 @@ import { getHardwareManager } from "./hardware-manager";
 
 // ============================================================================
 // Device Configuration Router
+// ============================================================================
+// TELEMETRY ROUTER
+// ============================================================================
+
+export const telemetryRouter = router({
+  getMetrics: publicProcedure.query(async () => {
+    const hwManager = getHardwareManager();
+    const status = hwManager.getStatus();
+    
+    // Calculate metrics
+    const now = Date.now();
+    const lastFFTAge = status.lastFFTTime ? now - status.lastFFTTime : null;
+    const fftRate = lastFFTAge && lastFFTAge < 5000 ? 60 : 0; // 60 FPS if recent
+    
+    return {
+      fftRate, // FPS
+      throughput: fftRate > 0 ? Math.round(fftRate * 1024 * 4 / 1024) : 0, // KB/s estimate
+      droppedFrames: status.droppedFrames,
+      isConnected: status.isConnected,
+      isRunning: status.isRunning,
+      error: status.error,
+      uptime: status.isRunning ? Math.floor((now - (status.lastFFTTime || now)) / 1000) : 0,
+    };
+  }),
+});
+
+// ============================================================================
+// DEVICE CONFIGURATION ROUTER
 // ============================================================================
 
 export const deviceRouter = router({
