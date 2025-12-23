@@ -10,7 +10,7 @@ import Spectrum from "./pages/Spectrum";
 import Device from "./pages/Device";
 import Recording from "./pages/Recording";
 import Telemetry from "./pages/Telemetry";
-import AIAssistant from "./pages/AIAssistant";
+
 
 function Router() {
   return (
@@ -20,7 +20,7 @@ function Router() {
         <Route path={"/device"} component={Device} />
         <Route path={"/recording"} component={Recording} />
         <Route path={"/telemetry"} component={Telemetry} />
-        <Route path={"/ai-assistant"} component={AIAssistant} />
+
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
         <Route component={NotFound} />

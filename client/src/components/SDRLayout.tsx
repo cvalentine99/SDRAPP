@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
 import { WebSocketStatus } from "@/components/WebSocketStatus";
+import { FloatingAIChat } from "@/components/FloatingAIChat";
 import {
   Activity,
   Database,
@@ -40,7 +41,6 @@ export function SDRLayout({ children }: SDRLayoutProps) {
     { path: "/device", label: "Device", icon: Radio },
     { path: "/recording", label: "Recording", icon: Database },
     { path: "/telemetry", label: "Telemetry", icon: Activity },
-    { path: "/ai-assistant", label: "AI Assistant", icon: Zap },
   ];
 
   return (
@@ -133,6 +133,9 @@ export function SDRLayout({ children }: SDRLayoutProps) {
 
       {/* Main Content Area */}
       <main className="flex-1 relative">{children}</main>
+
+      {/* Floating AI Chat (Global) */}
+      <FloatingAIChat />
 
       {/* Bottom HUD Status Bar */}
       <footer className="border-t border-border bg-card/50 backdrop-blur">

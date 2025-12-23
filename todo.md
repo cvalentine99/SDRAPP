@@ -212,3 +212,13 @@
 - [x] Fix waterfall RAF loop recreation (added fftDataRef for future real data)
 - [x] Fix WebSocketStatus timestamp (now updates on FFT data arrival)
 - [x] Fix WebSocketDiagnostics calculation errors (added guards for Infinity/NaN)
+
+## AI Assistant Redesign
+- [x] Create floating chat dialog component (lower right corner)
+- [x] Add chat toggle button (visible on all pages)
+- [x] Implement signals forensics RAG context
+- [x] Add RF analysis knowledge base (modulation types, interference patterns, spectrum techniques)
+- [x] Remove AIAssistant page from navigation
+- [x] Integrate floating chat into SDRLayout for global access
+- [ ] Add conversation persistence to database
+- [ ] Enable spectrum snapshot attachments in chat
