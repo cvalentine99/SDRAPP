@@ -23,12 +23,25 @@ export function WebSocketDiagnostics() {
       if (latest && previous) {
         // Calculate latency (time between frames)
         const timeDiff = latest.timestamp - previous.timestamp;
-        setLatency(timeDiff);
         
-        // Calculate throughput (bytes per second)
-        const dataSize = latest.data.length * 8; // 8 bytes per float64
-        const bytesPerSecond = (dataSize / timeDiff) * 1000;
-        setThroughput(bytesPerSecond);
+        // Guard against zero/negative time differences
+        if (timeDiff > 0 && isFinite(timeDiff)) {
+          setLatency(timeDiff);
+          
+          // Calculate throughput based on JSON payload size (more accurate than assuming float64)
+          const payloadSize = JSON.stringify(latest).length;
+          const bytesPerSecond = (payloadSize / timeDiff) * 1000;
+          
+          // Guard against Infinity/NaN
+          if (isFinite(bytesPerSecond)) {
+            setThroughput(bytesPerSecond);
+          }
+        }
+        
+        // Track dropped frames (when history buffer overflows)
+        if (fftHistory.length >= 100) {
+          setDroppedFrames((prev) => prev + 1);
+        }
       }
     }
   }, [fftHistory]);

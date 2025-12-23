@@ -17,6 +17,7 @@ export function WaterfallDisplay({
   const textureRef = useRef<WebGLTexture | null>(null);
   const [yOffset, setYOffset] = useState(0);
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const fftDataRef = useRef<Uint8Array | null>(null); // Hold latest FFT data without triggering re-render
 
   // Initialize WebGL context and shaders
   useEffect(() => {

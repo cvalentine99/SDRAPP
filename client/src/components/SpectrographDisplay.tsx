@@ -14,6 +14,7 @@ export function SpectrographDisplay({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);
 
+  // One-time canvas setup
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -21,14 +22,25 @@ export function SpectrographDisplay({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set up canvas for high-DPI displays
+    // Set up canvas for high-DPI displays (one-time setup)
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     ctx.scale(dpr, dpr);
+  }, [width, height]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     // Render loop
     const render = () => {
+      // Reset transform to prevent compounding
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       // Clear canvas
       ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
       ctx.fillRect(0, 0, width, height);

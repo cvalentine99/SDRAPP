@@ -3,16 +3,24 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useEffect, useState } from "react";
 
 export function WebSocketStatus() {
-  const { isConnected, error } = useWebSocket();
+  const { isConnected, error, fftData } = useWebSocket();
   const [lastDataTime, setLastDataTime] = useState<Date | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
 
+  // Update timestamp when data arrives (not just on connection)
   useEffect(() => {
-    if (isConnected) {
-      setLastDataTime(new Date());
+    if (fftData) {
+      setLastDataTime(new Date(fftData.timestamp));
       setIsReconnecting(false);
-    } else if (error) {
+    }
+  }, [fftData]);
+
+  // Track reconnection state
+  useEffect(() => {
+    if (!isConnected && error) {
       setIsReconnecting(true);
+    } else if (isConnected) {
+      setIsReconnecting(false);
     }
   }, [isConnected, error]);
 

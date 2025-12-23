@@ -205,3 +205,10 @@
 - [ ] Automated scanning with pause-on-signal detection
 - [ ] Scan results table with timestamps and power levels
 - [ ] Export scan results to CSV/JSON
+
+## Critical Bug Fixes (High Priority)
+- [x] Fix WebSocketContext.tsx import path (verified correct - no issue)
+- [x] Fix spectrograph transform compounding (visual corruption)
+- [x] Fix waterfall RAF loop recreation (added fftDataRef for future real data)
+- [x] Fix WebSocketStatus timestamp (now updates on FFT data arrival)
+- [x] Fix WebSocketDiagnostics calculation errors (added guards for Infinity/NaN)
