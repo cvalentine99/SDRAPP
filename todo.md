@@ -240,3 +240,13 @@ Based on actual gx10-alpha hardware specs:
 - [x] Production mode: Spawn sdr_streamer, connect to real B210, stream actual data (ProductionHardwareManager)
 - [x] Complete code separation via factory pattern (hardware-manager-factory.ts)
 - [x] Show mode indicator in footer status bar with yellow dot for demo, green for production
+
+
+## Runtime Mode Toggle (User Request - Dec 23, 2025)
+
+- [x] Create Settings page UI with mode toggle switch
+- [x] Add tRPC procedure to switch mode at runtime (system.switchSDRMode)
+- [x] Implement hardware manager recreation on mode change (switchSDRMode function)
+- [x] Add Settings route to App.tsx
+- [x] Settings accessible via user dropdown menu in navigation
+- [x] Test switching from demo to production and back (verified working)

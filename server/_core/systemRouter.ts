@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
-import { getSDRMode, isDemoMode, isProductionMode } from "../hardware-manager-factory";
+import { getSDRMode, isDemoMode, isProductionMode, switchSDRMode } from "../hardware-manager-factory";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -45,4 +45,15 @@ export const systemRouter = router({
       arch: process.arch,
     };
   }),
+
+  switchSDRMode: publicProcedure
+    .input(z.object({ mode: z.enum(['demo', 'production']) }))
+    .mutation(async ({ input }) => {
+      await switchSDRMode(input.mode);
+      return {
+        success: true,
+        newMode: input.mode,
+        message: `Switched to ${input.mode} mode`,
+      };
+    }),
 });

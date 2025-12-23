@@ -10,16 +10,17 @@ import { ProductionHardwareManager } from './production-hardware-manager';
 import { IHardwareManager } from './hardware-types';
 
 let hardwareManagerInstance: IHardwareManager | null = null;
+let currentMode: 'demo' | 'production' = ENV.sdrMode;
 
 /**
  * Get singleton hardware manager instance
- * Mode is determined by SDR_MODE environment variable:
+ * Mode is determined by currentMode (can be changed at runtime)
  * - "demo" (default): Returns DemoHardwareManager with simulated data
  * - "production": Returns ProductionHardwareManager with real B210 hardware
  */
 export function getHardwareManager(): IHardwareManager {
   if (!hardwareManagerInstance) {
-    if (ENV.sdrMode === 'production') {
+    if (currentMode === 'production') {
       console.log('[HW-FACTORY] Creating PRODUCTION hardware manager (real B210)');
       hardwareManagerInstance = new ProductionHardwareManager();
     } else {
@@ -31,24 +32,62 @@ export function getHardwareManager(): IHardwareManager {
 }
 
 /**
+ * Switch SDR mode at runtime
+ * Stops current hardware manager and creates new one with specified mode
+ */
+export async function switchSDRMode(newMode: 'demo' | 'production'): Promise<void> {
+  if (currentMode === newMode) {
+    console.log(`[HW-FACTORY] Already in ${newMode} mode, no change needed`);
+    return;
+  }
+
+  console.log(`[HW-FACTORY] Switching from ${currentMode} to ${newMode} mode`);
+
+  // Stop current hardware manager
+  if (hardwareManagerInstance) {
+    try {
+      await hardwareManagerInstance.stop();
+      console.log('[HW-FACTORY] Stopped current hardware manager');
+    } catch (error) {
+      console.error('[HW-FACTORY] Error stopping hardware manager:', error);
+    }
+    hardwareManagerInstance = null;
+  }
+
+  // Update mode
+  currentMode = newMode;
+
+  // Create new hardware manager
+  if (newMode === 'production') {
+    console.log('[HW-FACTORY] Creating PRODUCTION hardware manager (real B210)');
+    hardwareManagerInstance = new ProductionHardwareManager();
+  } else {
+    console.log('[HW-FACTORY] Creating DEMO hardware manager (simulated data)');
+    hardwareManagerInstance = new DemoHardwareManager();
+  }
+
+  console.log(`[HW-FACTORY] Successfully switched to ${newMode} mode`);
+}
+
+/**
  * Get current SDR mode
  */
 export function getSDRMode(): 'demo' | 'production' {
-  return ENV.sdrMode;
+  return currentMode;
 }
 
 /**
  * Check if running in demo mode
  */
 export function isDemoMode(): boolean {
-  return ENV.sdrMode === 'demo';
+  return currentMode === 'demo';
 }
 
 /**
  * Check if running in production mode
  */
 export function isProductionMode(): boolean {
-  return ENV.sdrMode === 'production';
+  return currentMode === 'production';
 }
 
 // Export for backward compatibility
