@@ -305,3 +305,12 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - Database schema is complete
 - Frontend-backend data flow works correctly for config persistence
 
+
+## Recording Enhancements (In Progress)
+- [x] Add upload progress bar for IQ data uploads
+- [x] Show real-time upload percentage and estimated time
+- [x] Create recording playback UI component (Play button)
+- [x] Download and visualize recorded IQ data (opens S3 URL)
+- [ ] Add waterfall replay for recorded signals (future enhancement)
+- [ ] Implement playback controls (play/pause/seek) (future enhancement)
+

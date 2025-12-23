@@ -23,6 +23,8 @@ export default function Recording() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [currentFileSize, setCurrentFileSize] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const utils = trpc.useUtils();
   const deviceConfig = trpc.device.getConfig.useQuery();
@@ -116,17 +118,35 @@ export default function Recording() {
       const buffer = Buffer.from(iqData.buffer);
       const base64Data = buffer.toString('base64');
       
-      // Upload IQ data to S3
-      toast.info("Uploading IQ data to S3...");
-      const { s3Url, s3Key } = await uploadIQData.mutateAsync({
-        filename: `${filename}.sigmf-data`,
-        data: base64Data,
-      });
+      // Upload IQ data to S3 with progress tracking
+      setIsUploading(true);
+      setUploadProgress(0);
       
-      toast.success("IQ data uploaded successfully");
-
-      // Save recording metadata
-      await createRecording.mutateAsync({
+      // Simulate upload progress (in production, use actual upload progress from S3)
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90; // Stop at 90% until upload completes
+          }
+          return prev + 10;
+        });
+      }, 200);
+      
+      try {
+        const { s3Url, s3Key } = await uploadIQData.mutateAsync({
+          filename: `${filename}.sigmf-data`,
+          data: base64Data,
+        });
+        
+        clearInterval(progressInterval);
+        setUploadProgress(100);
+        toast.success("IQ data uploaded successfully");
+        
+        // Continue with metadata save...
+        
+        // Save recording metadata
+        await createRecording.mutateAsync({
         filename: `${filename}.sigmf`,
         s3Key,
         s3Url,
@@ -140,11 +160,19 @@ export default function Recording() {
         hardware: "Ettus B210",
       });
 
-      setRecordingStartTime(null);
-      setRecordingDuration(0);
-      setCurrentFileSize(0);
+        setRecordingStartTime(null);
+        setRecordingDuration(0);
+        setCurrentFileSize(0);
+        setUploadProgress(0);
+      } catch (error) {
+        clearInterval(progressInterval);
+        setIsUploading(false);
+        setUploadProgress(0);
+        toast.error("Failed to save recording");
+        console.error(error);
+      }
     } catch (error) {
-      toast.error("Failed to save recording");
+      toast.error("Failed to stop recording");
       console.error(error);
     }
   };
@@ -220,6 +248,26 @@ export default function Recording() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  ) : isUploading ? (
+                    <div className="text-center">
+                      <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-secondary flex items-center justify-center">
+                        <div className="text-2xl font-mono text-secondary">
+                          {uploadProgress}%
+                        </div>
+                      </div>
+                      <p className="text-xl font-mono text-secondary mb-4">
+                        UPLOADING TO S3
+                      </p>
+                      <div className="w-full bg-black/50 rounded-full h-3 border border-secondary/30 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-300 neon-glow-cyan"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {uploadProgress < 100 ? 'Uploading IQ data...' : 'Finalizing...'}
+                      </p>
                     </div>
                   ) : (
                     <div className="text-center">
@@ -477,6 +525,19 @@ export default function Recording() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-primary hover:box-glow-pink"
+                        onClick={() => {
+                          // Download and visualize IQ data
+                          window.open(recording.s3Url, '_blank');
+                          toast.success("Opening IQ data file");
+                        }}
+                      >
+                        <Play className="w-3 h-3" />
+                        Play
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
