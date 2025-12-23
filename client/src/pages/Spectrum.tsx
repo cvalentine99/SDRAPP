@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pause, Play, Radio } from "lucide-react";
+import { Pause, Play, Radio, SkipBack, SkipForward } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
@@ -31,7 +31,16 @@ export default function Spectrum() {
     max: 6000,
   });
 
-  const { fftData, isConnected, subscribe, unsubscribe } = useWebSocket();
+  const { 
+    fftData, 
+    isConnected, 
+    subscribe, 
+    unsubscribe,
+    fftHistory,
+    historyIndex,
+    setHistoryIndex,
+    isPlayingHistory,
+  } = useWebSocket();
   const deviceConfig = trpc.device.getConfig.useQuery();
   const updateConfig = trpc.device.updateConfig.useMutation();
 
@@ -135,6 +144,73 @@ export default function Spectrum() {
             </div>
           </CardContent>
         </Card>
+
+        {/* History Scrubbing Controls */}
+        {fftHistory.length > 0 && (
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="neon-glow-cyan text-secondary">HISTORY PLAYBACK</span>
+                <span className="text-xs text-muted-foreground font-mono">
+                  {isPlayingHistory 
+                    ? `Frame ${historyIndex + 1}/${fftHistory.length}` 
+                    : `Live (${fftHistory.length} frames buffered)`}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-secondary hover:box-glow-cyan"
+                  onClick={() => setHistoryIndex(Math.max(0, historyIndex - 1))}
+                  disabled={historyIndex <= 0 && historyIndex !== -1}
+                >
+                  <SkipBack className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-secondary hover:box-glow-cyan flex-1"
+                  onClick={() => setHistoryIndex(isPlayingHistory ? -1 : fftHistory.length - 1)}
+                >
+                  {isPlayingHistory ? (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Resume Live
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-4 h-4 mr-2" />
+                      Review History
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-secondary hover:box-glow-cyan"
+                  onClick={() => setHistoryIndex(Math.min(fftHistory.length - 1, historyIndex + 1))}
+                  disabled={historyIndex >= fftHistory.length - 1}
+                >
+                  <SkipForward className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Slider
+                  value={[historyIndex === -1 ? fftHistory.length - 1 : historyIndex]}
+                  onValueChange={([value]) => setHistoryIndex(value)}
+                  min={0}
+                  max={Math.max(0, fftHistory.length - 1)}
+                  step={1}
+                  className="w-full"
+                  disabled={fftHistory.length === 0}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Right Control Panel */}

@@ -14,12 +14,20 @@ interface UseWebSocketReturn {
   error: string | null;
   subscribe: () => void;
   unsubscribe: () => void;
+  fftHistory: FFTData[];
+  historyIndex: number;
+  setHistoryIndex: (index: number) => void;
+  isPlayingHistory: boolean;
 }
+
+const FFT_HISTORY_SIZE = 100;
 
 export function useWebSocket(): UseWebSocketReturn {
   const [fftData, setFFTData] = useState<FFTData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fftHistory, setFFTHistory] = useState<FFTData[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1); // -1 = live mode
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSubscribedRef = useRef(false);
@@ -47,7 +55,20 @@ export function useWebSocket(): UseWebSocketReturn {
       ws.onmessage = (event) => {
         try {
           const data: FFTData = JSON.parse(event.data);
-          setFFTData(data);
+          
+          // Update history buffer (circular buffer)
+          setFFTHistory((prev) => {
+            const newHistory = [...prev, data];
+            if (newHistory.length > FFT_HISTORY_SIZE) {
+              newHistory.shift(); // Remove oldest
+            }
+            return newHistory;
+          });
+          
+          // Only update live data if not viewing history
+          if (historyIndex === -1) {
+            setFFTData(data);
+          }
         } catch (err) {
           console.error("[WebSocket] Error parsing message:", err);
         }
@@ -115,11 +136,25 @@ export function useWebSocket(): UseWebSocketReturn {
     };
   }, [connect]);
 
+  // Update displayed data when history index changes
+  useEffect(() => {
+    if (historyIndex >= 0 && historyIndex < fftHistory.length) {
+      setFFTData(fftHistory[historyIndex]);
+    } else if (historyIndex === -1 && fftHistory.length > 0) {
+      // Return to live mode
+      setFFTData(fftHistory[fftHistory.length - 1]);
+    }
+  }, [historyIndex, fftHistory]);
+
   return {
     fftData,
     isConnected,
     error,
     subscribe,
     unsubscribe,
+    fftHistory,
+    historyIndex,
+    setHistoryIndex,
+    isPlayingHistory: historyIndex >= 0,
   };
 }

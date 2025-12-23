@@ -21,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState } from "react";
+import { WebSocketDiagnostics } from "@/components/WebSocketDiagnostics";
 
 export default function Device() {
   const [dcOffsetCorrection, setDcOffsetCorrection] = useState(true);
@@ -399,6 +400,21 @@ export default function Device() {
                   real-time analysis and visualization.
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* WebSocket Connection Settings */}
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Activity className="w-4 h-4 text-secondary" />
+                <span className="neon-glow-cyan text-secondary">
+                  WEBSOCKET DIAGNOSTICS
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <WebSocketDiagnostics />
             </CardContent>
           </Card>
 

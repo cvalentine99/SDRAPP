@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trpc } from "@/lib/trpc";
+import { WebSocketStatus } from "@/components/WebSocketStatus";
 import {
   Activity,
   Database,
@@ -87,8 +88,9 @@ export function SDRLayout({ children }: SDRLayoutProps) {
             })}
           </nav>
 
-          {/* User Profile */}
+          {/* WebSocket Status & User Profile */}
           <div className="flex items-center gap-4">
+            <WebSocketStatus />
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

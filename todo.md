@@ -174,3 +174,17 @@
 - [x] Fix WebSocket rapid reconnection issue during hot reloads
 - [x] Improve WebSocket cleanup on component unmount
 - [x] Add connection debouncing to prevent reconnection churn
+
+## WebSocket Enhancements
+- [x] Connection status indicator in top navigation (Connected/Reconnecting/Disconnected)
+- [x] Color-coded neon glow (cyan=connected, yellow=reconnecting, pink=error)
+- [x] Last successful data timestamp display
+- [x] FFT data circular buffer (100 frames)
+- [x] Waterfall history scrubbing with controls
+- [x] Timeline slider for reviewing past spectrum activity
+- [x] Reconnection settings panel in Device page
+- [x] Configurable auto-retry interval
+- [x] Configurable max retry attempts
+- [x] Configurable connection timeout
+- [x] Manual reconnect button
+- [x] Connection diagnostics (latency, packet loss, throughput)
