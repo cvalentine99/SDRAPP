@@ -218,3 +218,25 @@ Based on actual gx10-alpha hardware specs:
 - [x] Wire Telemetry.tsx to real metrics (ALREADY IMPLEMENTED - telemetry-router.ts)
 - [x] Add real-time hardware status feedback (ALREADY IMPLEMENTED - device-router.ts getStatus)
 - [x] Implement proper error handling (ALREADY IMPLEMENTED - hardware-manager.ts error handling)
+
+
+## Demo/Production Mode Toggle (User Request - Dec 23, 2025)
+
+### Backend Configuration
+- [x] Add SDR_MODE environment variable (demo/production)
+- [x] Create mode configuration in server/_core/env.ts
+- [x] Update hardware-manager.ts to check mode and use simulated/real data accordingly
+- [x] Add demo data generator for FFT, status, and telemetry
+- [x] Update WebSocket server to broadcast demo or real data based on mode
+
+### Frontend UI Toggle
+- [x] Add visual indicator showing current mode in footer status bar
+- [x] Create tRPC procedure to get current mode (system.getSDRMode)
+- [ ] Add mode toggle switch in settings (requires restart to change SDR_MODE env var)
+- [ ] Persist mode preference in database per user (future enhancement)
+
+### Mode-Specific Behavior
+- [x] Demo mode: Use simulated FFT data, fake hardware status, no C++ daemon (DemoHardwareManager)
+- [x] Production mode: Spawn sdr_streamer, connect to real B210, stream actual data (ProductionHardwareManager)
+- [x] Complete code separation via factory pattern (hardware-manager-factory.ts)
+- [x] Show mode indicator in footer status bar with yellow dot for demo, green for production

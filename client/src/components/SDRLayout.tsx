@@ -28,6 +28,7 @@ export function SDRLayout({ children }: SDRLayoutProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation();
+  const { data: sdrMode } = trpc.system.getSDRMode.useQuery();
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
@@ -140,6 +141,21 @@ export function SDRLayout({ children }: SDRLayoutProps) {
               <div className="w-2 h-2 rounded-full bg-secondary animate-pulse box-glow-cyan" />
               <span className="text-muted-foreground">SYSTEM ONLINE</span>
             </div>
+            {sdrMode && (
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  sdrMode.isDemo ? 'bg-yellow-500' : 'bg-green-500'
+                }`} />
+                <span className="text-muted-foreground uppercase">
+                  {sdrMode.mode} MODE
+                </span>
+                {sdrMode.isDemo && (
+                  <span className="text-yellow-500 text-xs">
+                    (SIMULATED DATA)
+                  </span>
+                )}
+              </div>
+            )}
             <div className="text-muted-foreground">
               <span className="text-secondary">USB 3.0</span> CONNECTED
             </div>

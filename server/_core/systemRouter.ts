@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
+import { getSDRMode, isDemoMode, isProductionMode } from "../hardware-manager-factory";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -26,4 +27,22 @@ export const systemRouter = router({
         success: delivered,
       } as const;
     }),
+
+  // SDR Mode Management
+  getSDRMode: publicProcedure.query(() => {
+    return {
+      mode: getSDRMode(),
+      isDemo: isDemoMode(),
+      isProduction: isProductionMode(),
+    };
+  }),
+
+  getSystemInfo: publicProcedure.query(() => {
+    return {
+      sdrMode: getSDRMode(),
+      nodeEnv: process.env.NODE_ENV || 'development',
+      platform: process.platform,
+      arch: process.arch,
+    };
+  }),
 });

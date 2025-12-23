@@ -3,7 +3,7 @@
  */
 
 import { router, publicProcedure } from './_core/trpc';
-import { getHardwareManager } from './hardware-manager';
+import { getHardwareManager } from './hardware-manager-factory';
 
 export const telemetryRouter = router({
   getMetrics: publicProcedure.query(() => {

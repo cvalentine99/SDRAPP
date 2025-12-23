@@ -6,7 +6,8 @@
 
 import { Server as HTTPServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { getHardwareManager, FFTData, StatusData } from './hardware-manager';
+import { getHardwareManager } from './hardware-manager-factory';
+import { FFTData, StatusData } from './hardware-types';
 
 export function setupWebSocket(httpServer: HTTPServer) {
   const wss = new WebSocketServer({ 

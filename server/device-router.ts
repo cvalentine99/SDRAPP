@@ -6,7 +6,8 @@
 
 import { z } from 'zod';
 import { router, publicProcedure } from './_core/trpc';
-import { hardwareManager, B210_LIMITS } from './hardware-manager';
+import { hardwareManager } from './hardware-manager-factory';
+import { B210_LIMITS } from './hardware-types';
 
 export const deviceRouter = router({
   /**
