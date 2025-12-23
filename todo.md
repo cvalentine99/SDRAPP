@@ -390,3 +390,13 @@ const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
 - [x] Wire real telemetry metrics from hardware manager (added telemetryRouter, wired to Telemetry.tsx)
 - [x] Add rate limiting for AI endpoints (20 req/min AI, 10 req/hr uploads, 100 req/min config)
 
+
+## Dashboard Page (COMPLETED)
+- [x] Create Dashboard.tsx with real-time telemetry charts
+- [x] Add FFT rate line chart with 60-second history
+- [x] Add throughput gauge visualization with bandwidth usage
+- [x] Add dropped frames counter with quality status
+- [x] Add connection status banner with live indicator
+- [x] Add Dashboard route to App.tsx
+- [x] Add Dashboard nav link to SDRLayout
+

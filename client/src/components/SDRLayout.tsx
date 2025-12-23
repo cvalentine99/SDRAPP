@@ -20,6 +20,7 @@ import {
   User,
   Waves,
   Zap,
+  LayoutDashboard,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -42,6 +43,7 @@ export function SDRLayout({ children }: SDRLayoutProps) {
     { path: "/device", label: "Device", icon: Radio },
     { path: "/recording", label: "Recording", icon: Database },
     { path: "/scanner", label: "Scanner", icon: Radar },
+    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/telemetry", label: "Telemetry", icon: Activity },
   ];
 
