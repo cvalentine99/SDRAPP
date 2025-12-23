@@ -179,3 +179,13 @@ Based on actual gx10-alpha hardware specs:
 - [x] Export AI router in appRouter
 - [ ] Wire AIAssistant.tsx to AI procedures (TODO)
 
+
+## Database Schema & Deployment
+- [x] Create recordings table in drizzle/schema.ts
+- [x] Add fields: id, userId, filename, frequency, sampleRate, duration, timestamp, size, filePath
+- [x] Run pnpm db:push to apply schema changes (migration 0005_magenta_wolfsbane.sql)
+- [x] Update recording-router.ts to use database (protectedProcedure with user ownership)
+- [x] Create deployment guide for gx10-alpha ARM64 (DEPLOYMENT-GX10-ALPHA.md)
+- [x] Document C++ build process (cmake, make, dependencies)
+- [x] Document B210 hardware verification steps (uhd_find_devices, uhd_usrp_probe)
+

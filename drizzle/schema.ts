@@ -25,4 +25,21 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * IQ Recordings table
+ * Stores metadata for captured RF recordings from the B210
+ */
+export const recordings = mysqlTable("recordings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  frequency: int("frequency").notNull(), // Hz
+  sampleRate: int("sampleRate").notNull(), // Hz
+  duration: int("duration").notNull(), // seconds
+  size: int("size").notNull(), // bytes
+  filePath: text("filePath").notNull(), // S3 URL or local path
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Recording = typeof recordings.$inferSelect;
+export type InsertRecording = typeof recordings.$inferInsert;
