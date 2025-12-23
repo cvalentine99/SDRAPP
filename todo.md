@@ -122,3 +122,60 @@
 - [ ] Loading states for all async operations
 - [ ] Error messages with recovery suggestions
 - [ ] Empty states for data displays
+
+## B210 Hardware Backend Integration (CRITICAL - IN PROGRESS)
+Based on actual gx10-alpha hardware specs:
+- Device: B210 (serial 194919, USB 3.0)
+- GPSDO: GPSTCXO v3.2 for SDRPro (internal)
+- RX Freq: 50-6000 MHz
+- TX Freq: 50-6000 MHz  
+- RX Gain: 0-76 dB (PGA, 1 dB steps)
+- TX Gain: 0-89.8 dB (PGA, 0.2 dB steps)
+- Bandwidth: 200 kHz - 56 MHz
+- Sensors: GPS (gpgga, gprmc, time, locked, servo), temp, rssi, lo_locked, ref_locked
+
+### Tasks:
+- [x] Update sdr_streamer.cpp with correct B210 frequency range (50-6000 MHz)
+- [x] Update gain ranges (RX: 0-76 dB, TX: 0-89.8 dB)
+- [x] Add GPSDO time source configuration
+- [x] Add GPS sensor monitoring (gps_locked, gps_time, gps_servo)
+- [x] Add temperature sensor monitoring (RX/TX frontend temp)
+- [x] Add RSSI and LO lock monitoring (in status JSON output)
+- [ ] Update hardware-manager.ts with GPSDO support
+- [ ] Add tRPC procedures for GPS status and time sync
+- [ ] Update device configuration validation with actual limits
+- [ ] Add hardware health monitoring endpoint
+
+
+## Frontend-Backend Gap Fixes (CRITICAL)
+
+### P0 - Hardware Control Integration
+- [x] Create server/device-router.ts with hardware control procedures
+- [x] Add device.setFrequency mutation (50-6000 MHz validation)
+- [x] Add device.setGain mutation (0-76 dB validation)
+- [x] Add device.setSampleRate mutation
+- [x] Add device.setBandwidth mutation (200 kHz - 56 MHz)
+- [x] Add device.getConfig query
+- [x] Add device.getStatus query (GPSDO, temp sensors)
+- [x] Export device router in appRouter
+- [x] Wire Device.tsx to device router (tRPC hooks added)
+
+### P1 - WebSocket FFT Stream
+- [x] Create server/websocket.ts WebSocket server
+- [x] Subscribe to hardware-manager 'fft' events
+- [x] Broadcast FFT data to WebSocket clients
+- [x] Add connection/disconnection handling
+- [ ] Wire Spectrum.tsx to WebSocket FFT stream (TODO)
+- [ ] Add client-side reconnection logic (TODO)
+
+### P2 - Recording & Telemetry
+- [x] Create server/recording-router.ts (start, stop, list, delete, getStatus)
+- [x] Create server/telemetry-router.ts (getMetrics, getHardwareStatus)
+- [ ] Wire Recording.tsx to recording procedures (TODO)
+- [ ] Wire Telemetry.tsx to telemetry procedures (TODO)
+
+### P3 - AI Assistant
+- [x] Create server/ai-router.ts (chat, analyzeSpectrum)
+- [x] Export AI router in appRouter
+- [ ] Wire AIAssistant.tsx to AI procedures (TODO)
+
