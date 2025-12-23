@@ -14,6 +14,7 @@ import { Pause, Play, Radio } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
+import { BookmarkPanel } from "@/components/BookmarkPanel";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { trpc } from "@/lib/trpc";
 
@@ -129,7 +130,7 @@ export default function Spectrum() {
       </div>
 
       {/* Right Control Panel */}
-      <div className="w-80 flex flex-col gap-4">
+      <div className="w-80 flex flex-col gap-4 overflow-y-auto">
         {/* Frequency Control */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
@@ -276,6 +277,9 @@ export default function Spectrum() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bookmarks */}
+        <BookmarkPanel onTuneToFrequency={handleFrequencyChange} />
 
         {/* FFT Configuration */}
         <Card className="bg-card border-border">

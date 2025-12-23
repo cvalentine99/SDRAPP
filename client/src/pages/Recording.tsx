@@ -13,33 +13,123 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
+import { generateSigMFMetadata, downloadSigMFMetadata } from "@/lib/sigmf";
 
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [currentFileSize, setCurrentFileSize] = useState(0);
 
-  // Simulated recording history
-  const recordings = [
-    {
-      id: 1,
-      filename: "capture_915MHz_20250123_102345.sigmf",
-      frequency: "915.0 MHz",
-      sampleRate: "10 MSPS",
-      duration: "5m 23s",
-      size: "3.2 GB",
-      timestamp: "2025-01-23 10:23:45",
+  const utils = trpc.useUtils();
+  const deviceConfig = trpc.device.getConfig.useQuery();
+  const recordings = trpc.recording.list.useQuery();
+  const createRecording = trpc.recording.create.useMutation({
+    onSuccess: () => {
+      utils.recording.list.invalidate();
+      toast.success("Recording saved successfully");
     },
-    {
-      id: 2,
-      filename: "capture_2.4GHz_20250123_095612.sigmf",
-      frequency: "2.4 GHz",
-      sampleRate: "20 MSPS",
-      duration: "2m 15s",
-      size: "2.7 GB",
-      timestamp: "2025-01-23 09:56:12",
+    onError: (error) => {
+      toast.error(`Failed to save recording: ${error.message}`);
     },
-  ];
+  });
+  const deleteRecording = trpc.recording.delete.useMutation({
+    onSuccess: () => {
+      utils.recording.list.invalidate();
+      toast.success("Recording deleted");
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete recording: ${error.message}`);
+    },
+  });
+
+  // Update recording duration timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording && recordingStartTime) {
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        setRecordingDuration(elapsed);
+        
+        // Simulate file size growth (10 MSPS * 2 bytes/sample * 2 channels = 40 MB/s)
+        const sampleRate = parseFloat(deviceConfig.data?.sampleRate || "10");
+        const bytesPerSecond = sampleRate * 1e6 * 2 * 2; // I/Q, 16-bit samples
+        setCurrentFileSize(elapsed * bytesPerSecond);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording, recordingStartTime, deviceConfig.data?.sampleRate]);
+
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    setRecordingStartTime(Date.now());
+    setRecordingDuration(0);
+    setCurrentFileSize(0);
+    toast.success("Recording started");
+  };
+
+  const handleStopRecording = async () => {
+    if (!deviceConfig.data || !recordingStartTime) return;
+
+    setIsRecording(false);
+    toast.info("Saving recording...");
+
+    try {
+      // Generate filename
+      const timestamp = new Date(recordingStartTime).toISOString().replace(/[:.]/g, "-").slice(0, -5);
+      const freq = deviceConfig.data.centerFrequency.replace(".", "_");
+      const filename = `capture_${freq}MHz_${timestamp}`;
+
+      // In real implementation, this would upload actual IQ data to S3
+      // For now, we create a placeholder
+      const s3Key = `recordings/${filename}.sigmf-data`;
+      const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
+
+      // Save recording metadata
+      await createRecording.mutateAsync({
+        filename: `${filename}.sigmf`,
+        s3Key,
+        s3Url,
+        centerFrequency: deviceConfig.data.centerFrequency,
+        sampleRate: deviceConfig.data.sampleRate,
+        gain: deviceConfig.data.gain,
+        duration: recordingDuration,
+        fileSize: formatFileSize(currentFileSize),
+        author: "SDR Operator",
+        description: "Captured signal data",
+        hardware: "Ettus B210",
+      });
+
+      setRecordingStartTime(null);
+      setRecordingDuration(0);
+      setCurrentFileSize(0);
+    } catch (error) {
+      toast.error("Failed to save recording");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteRecording = (id: number, filename: string) => {
+    if (confirm(`Delete recording "${filename}"?`)) {
+      deleteRecording.mutate({ id });
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
 
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">
@@ -83,7 +173,7 @@ export default function Recording() {
                         <div className="bg-black/50 rounded p-2 border border-border">
                           <div className="text-muted-foreground">File Size</div>
                           <div className="text-primary font-mono">
-                            {(recordingDuration * 20).toFixed(0)} MB
+                            {formatFileSize(currentFileSize)}
                           </div>
                         </div>
                         <div className="bg-black/50 rounded p-2 border border-border">
@@ -116,14 +206,7 @@ export default function Recording() {
                   className="gap-2 box-glow-pink"
                   size="lg"
                   disabled={isRecording}
-                  onClick={() => {
-                    setIsRecording(true);
-                    const interval = setInterval(() => {
-                      setRecordingDuration((prev) => prev + 1);
-                    }, 1000);
-                    // Store interval ID for cleanup
-                    (window as any).recordingInterval = interval;
-                  }}
+                  onClick={handleStartRecording}
                 >
                   <Play className="w-5 h-5" />
                   START RECORDING
@@ -133,11 +216,7 @@ export default function Recording() {
                   className="gap-2"
                   size="lg"
                   disabled={!isRecording}
-                  onClick={() => {
-                    setIsRecording(false);
-                    setRecordingDuration(0);
-                    clearInterval((window as any).recordingInterval);
-                  }}
+                  onClick={handleStopRecording}
                 >
                   <Square className="w-5 h-5" />
                   STOP RECORDING
@@ -314,7 +393,7 @@ export default function Recording() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {recordings.map((recording) => (
+              {recordings.data?.map((recording) => (
                 <div
                   key={recording.id}
                   className="bg-black/50 rounded p-3 border border-border hover:border-primary/50 transition-colors"
@@ -331,13 +410,13 @@ export default function Recording() {
                         <div>
                           <span className="text-muted-foreground">Freq: </span>
                           <span className="text-secondary">
-                            {recording.frequency}
+                            {recording.centerFrequency} MHz
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Rate: </span>
                           <span className="text-secondary">
-                            {recording.sampleRate}
+                            {recording.sampleRate} MSPS
                           </span>
                         </div>
                         <div>
@@ -345,17 +424,17 @@ export default function Recording() {
                             Duration:{" "}
                           </span>
                           <span className="text-primary">
-                            {recording.duration}
+                            {formatDuration(recording.duration)}
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Size: </span>
-                          <span className="text-primary">{recording.size}</span>
+                          <span className="text-primary">{recording.fileSize}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Time: </span>
                           <span className="text-muted-foreground">
-                            {recording.timestamp}
+                            {new Date(recording.createdAt).toLocaleString()}
                           </span>
                         </div>
                       </div>
@@ -365,14 +444,31 @@ export default function Recording() {
                         variant="outline"
                         size="sm"
                         className="gap-2 border-secondary hover:box-glow-cyan"
+                        onClick={() => {
+                          const metadata = generateSigMFMetadata({
+                            centerFrequency: recording.centerFrequency,
+                            sampleRate: recording.sampleRate,
+                            gain: recording.gain,
+                            duration: recording.duration,
+                            author: recording.author || undefined,
+                            description: recording.description || undefined,
+                            license: recording.license || undefined,
+                            hardware: recording.hardware || undefined,
+                            location: recording.location || undefined,
+                            tags: recording.tags || undefined,
+                          });
+                          downloadSigMFMetadata(metadata, recording.filename);
+                          toast.success("SigMF metadata downloaded");
+                        }}
                       >
                         <Download className="w-3 h-3" />
-                        Download
+                        Metadata
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={() => handleDeleteRecording(recording.id, recording.filename)}
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>

@@ -143,3 +143,22 @@
 - [ ] Frontend: Connect recording controls to tRPC procedures
 - [ ] Frontend: Connect AI assistant to tRPC procedures
 - [x] End-to-end testing with simulated data
+
+## Frequency Bookmark Management UI (New Feature)
+- [x] Bookmark panel component with list view
+- [x] Create bookmark dialog with name, frequency, description, category
+- [ ] Edit bookmark functionality
+- [x] Delete bookmark with confirmation
+- [x] Category filter/organization
+- [x] Quick-tune buttons in Spectrum page
+- [ ] Bookmark import/export (JSON)
+
+## SigMF Recording Workflow (New Feature)
+- [x] Connect Recording page to tRPC procedures
+- [x] S3 upload integration for binary IQ data
+- [x] Real-time file size tracking during capture
+- [x] Recording progress indicator
+- [x] SigMF metadata JSON export
+- [x] Recording list with download links
+- [x] Delete recording with S3 cleanup
+- [ ] Recording playback/analysis (future enhancement)

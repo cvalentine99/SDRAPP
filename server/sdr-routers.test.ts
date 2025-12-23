@@ -63,29 +63,7 @@ describe("Device Configuration Router", () => {
   });
 });
 
-describe("Frequency Bookmarks Router", () => {
-  it("should create and list frequency bookmarks", async () => {
-    const ctx = createMockContext();
-    const caller = appRouter.createCaller(ctx);
-
-    // Create bookmark
-    const createResult = await caller.bookmarks.create({
-      name: "ISM Band",
-      frequency: "915.0",
-      description: "ISM 915 MHz band",
-      category: "ISM",
-    });
-
-    expect(createResult).toBeDefined();
-    expect(createResult.name).toBe("ISM Band");
-    expect(createResult.frequency).toBe("915.0");
-
-    // List bookmarks
-    const listResult = await caller.bookmarks.list();
-    expect(listResult).toBeDefined();
-    expect(Array.isArray(listResult)).toBe(true);
-  });
-});
+// Bookmark tests moved to bookmark-recording.test.ts for better organization
 
 describe("AI Assistant Router", () => {
   it("should process AI chat message with context", { timeout: 30000 }, async () => {
