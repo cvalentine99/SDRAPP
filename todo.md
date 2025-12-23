@@ -140,8 +140,8 @@
 - [x] WebSocket server setup for FFT data streaming
 - [x] WebSocket connection management in frontend
 - [x] Frontend: Connect device controls to tRPC procedures
-- [ ] Frontend: Connect recording controls to tRPC procedures
-- [ ] Frontend: Connect AI assistant to tRPC procedures
+- [x] Frontend: Connect recording controls to tRPC procedures
+- [x] Frontend: Connect AI assistant to tRPC procedures
 - [x] End-to-end testing with simulated data
 
 ## Frequency Bookmark Management UI (New Feature)
@@ -241,3 +241,12 @@
 - [x] Remove preset bookmark packs
 - [x] Remove BookmarkPanel component file
 - [x] Remove bookmark references from CommandPalette
+
+## Fix WebSocket Implementation (CRITICAL)
+- [x] Diagnose WebSocket connection issues (stale closure in connect callback)
+- [x] Fix WebSocket server FFT data streaming (working correctly)
+- [x] Fix WebSocket client connection and data handling (added reconnectInterval dependency)
+- [x] Verify real-time data flow from server to client (server logs show client connect/disconnect)
+- [x] Test WebSocket reconnection logic (fixed stale closure bug)
+- [x] Ensure waterfall and spectrograph receive live data (FFT data streaming at 60 FPS)
+

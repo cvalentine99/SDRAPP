@@ -104,7 +104,7 @@ export function useWebSocket(): UseWebSocketReturn {
       console.error("[WebSocket] Connection error:", err);
       setError("Failed to establish WebSocket connection");
     }
-  }, []);
+  }, [reconnectInterval]);
 
   const subscribe = useCallback(() => {
     isSubscribedRef.current = true;
