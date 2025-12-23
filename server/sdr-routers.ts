@@ -10,6 +10,7 @@ import {
   createAIConversation,
 } from "./sdr-db";
 import { invokeLLM } from "./_core/llm";
+import { storagePut } from "./storage";
 
 // ============================================================================
 // Device Configuration Router
@@ -126,6 +127,33 @@ export const recordingRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       return await deleteRecording(input.id, ctx.user.id);
+    }),
+
+  uploadIQData: protectedProcedure
+    .input(
+      z.object({
+        filename: z.string(),
+        data: z.string(), // base64 encoded binary IQ data
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Decode base64 to binary
+      const buffer = Buffer.from(input.data, "base64");
+      
+      // Generate unique S3 key with user ID to prevent conflicts
+      const s3Key = `recordings/${ctx.user.id}/${input.filename}`;
+      
+      // Upload to S3
+      const { url } = await storagePut(
+        s3Key,
+        buffer,
+        "application/octet-stream"
+      );
+      
+      return {
+        s3Url: url,
+        s3Key,
+      };
     }),
 });
 

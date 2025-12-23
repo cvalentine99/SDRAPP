@@ -250,3 +250,58 @@
 - [x] Test WebSocket reconnection logic (fixed stale closure bug)
 - [x] Ensure waterfall and spectrograph receive live data (FFT data streaming at 60 FPS)
 
+
+## Frontend-Backend Integration Audit Results
+
+### CRITICAL: Incomplete Implementations Found
+
+#### 1. Recording Page - S3 Upload Stub (HIGH PRIORITY)
+**Location:** `client/src/pages/Recording.tsx` lines 86-89
+**Issue:** Recording uses placeholder S3 URL instead of actual upload
+```typescript
+// In real implementation, this would upload actual IQ data to S3
+// For now, we create a placeholder
+const s3Key = `recordings/${filename}.sigmf-data`;
+const s3Url = `https://placeholder.s3.amazonaws.com/${s3Key}`;
+```
+**Fix Required:**
+- [ ] Implement actual S3 upload using storagePut() from server/storage.ts
+- [ ] Generate binary IQ data file during recording
+- [ ] Upload IQ data to S3 and get real URL
+- [ ] Update recording.create mutation with actual s3Key and s3Url
+
+#### 2. WebSocket FFT Data - Simulated Data (MEDIUM PRIORITY)
+**Location:** `server/websocket.ts` lines 51-110
+**Issue:** WebSocket streams simulated FFT data, not real hardware data
+**Current:** `generateSimulatedFFT()` creates fake spectrum with hardcoded peaks
+**Fix Required:**
+- [ ] Replace simulated FFT generation with real UHD/SoapySDR integration
+- [ ] Connect to physical Ettus B210 device
+- [ ] Stream real FFT data from hardware
+- [ ] Implement proper DSP pipeline (FFT, windowing, scaling)
+
+#### 3. Telemetry Page - Hardcoded Values (LOW PRIORITY)
+**Location:** `client/src/pages/Telemetry.tsx`
+**Issue:** All telemetry values are hardcoded (FFT Rate: 60, Throughput: 123 KB/s, GPU: 45%, etc.)
+**Fix Required:**
+- [ ] Create telemetry tRPC procedure to fetch real metrics
+- [ ] Implement server-side telemetry collection
+- [ ] Connect frontend to live telemetry data
+- [ ] Add real-time updates via WebSocket or polling
+
+#### 4. Device Page - No Hardware Control (MEDIUM PRIORITY)
+**Location:** `client/src/pages/Device.tsx`
+**Issue:** Device controls update database config but don't control actual hardware
+**Fix Required:**
+- [ ] Implement UHD/SoapySDR device control procedures
+- [ ] Add tRPC procedures for: setFrequency, setGain, setSampleRate, etc.
+- [ ] Connect frontend controls to hardware control procedures
+- [ ] Add hardware status feedback (PLL lock, temperature, etc.)
+
+### Summary
+- **3 CRITICAL stubs** requiring implementation before hardware deployment
+- **1 LOW priority** hardcoded UI that can wait
+- All tRPC procedures are complete and functional
+- Database schema is complete
+- Frontend-backend data flow works correctly for config persistence
+
