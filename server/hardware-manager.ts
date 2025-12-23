@@ -285,4 +285,14 @@ export class HardwareManager extends EventEmitter {
 }
 
 // Singleton instance
-export const hardwareManager = new HardwareManager();
+let hardwareManagerInstance: HardwareManager | null = null;
+
+export function getHardwareManager(): HardwareManager {
+  if (!hardwareManagerInstance) {
+    hardwareManagerInstance = new HardwareManager();
+  }
+  return hardwareManagerInstance;
+}
+
+// Export singleton for backward compatibility
+export const hardwareManager = getHardwareManager();

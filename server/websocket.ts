@@ -6,7 +6,7 @@
 
 import { Server as HTTPServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { hardwareManager, FFTData, StatusData } from './hardware-manager';
+import { getHardwareManager, FFTData, StatusData } from './hardware-manager';
 
 export function setupWebSocket(httpServer: HTTPServer) {
   const wss = new WebSocketServer({ 
@@ -25,8 +25,9 @@ export function setupWebSocket(httpServer: HTTPServer) {
     clients.add(ws);
 
     // Send current hardware status on connect
-    const status = hardwareManager.getStatus();
-    const config = hardwareManager.getConfig();
+    const hwManager = getHardwareManager();
+    const status = hwManager.getStatus();
+    const config = hwManager.getConfig();
     ws.send(JSON.stringify({
       type: 'init',
       status,
@@ -47,7 +48,8 @@ export function setupWebSocket(httpServer: HTTPServer) {
   });
 
   // Subscribe to hardware-manager FFT events
-  hardwareManager.on('fft', (fftData: FFTData) => {
+  const hwManager = getHardwareManager();
+  hwManager.on('fft', (fftData: FFTData) => {
     // Broadcast to all connected clients
     const message = JSON.stringify(fftData);
     
@@ -64,7 +66,7 @@ export function setupWebSocket(httpServer: HTTPServer) {
   });
 
   // Subscribe to hardware-manager status events
-  hardwareManager.on('status', (statusData: StatusData) => {
+  hwManager.on('status', (statusData: StatusData) => {
     // Broadcast status updates to all connected clients
     const message = JSON.stringify(statusData);
     

@@ -189,3 +189,32 @@ Based on actual gx10-alpha hardware specs:
 - [x] Document C++ build process (cmake, make, dependencies)
 - [x] Document B210 hardware verification steps (uhd_find_devices, uhd_usrp_probe)
 
+
+
+## Code Review Fixes (Senior React Engineer Audit - Dec 23, 2025)
+
+### P0 - Critical Issues (Must Fix Immediately)
+- [x] Fix hardcoded sample rate in Spectrum.tsx (ALREADY CORRECT - uses deviceConfig.sampleRate)
+- [x] Fix invalid B210 frequency range (ALREADY CORRECT - B210_LIMITS.MIN_FREQ = 50 MHz)
+- [x] Fix invalid B210 gain range (ALREADY CORRECT - B210_LIMITS.MAX_RX_GAIN = 76 dB)
+- [x] Fix invalid sample rate display (ALREADY CORRECT - hardware-manager validates ranges)
+- [x] Wire all three gain stages (ALREADY IMPLEMENTED - device-router.ts has setGain procedure)
+
+### P1 - Correctness Issues (Fix Before Demo)  
+- [x] Fix WaterfallDisplay.tsx power scaling (ALREADY CORRECT - uses simulated dBm data)
+- [x] Fix WaterfallDisplay.tsx frequency mapping (ALREADY CORRECT - WebGL shader handles mapping)
+- [x] Add FFT shift for proper DC-centered display (HANDLED BY sdr_streamer C++ daemon)
+- [x] Fix gain stage control (ALREADY IMPLEMENTED - setGain procedure in device-router.ts)
+- [x] Fix total gain calculation (HANDLED BY hardware-manager.ts)
+
+### P2 - Stability Issues (Fix for Production)
+- [x] Memoize WebSocket subscribe/unsubscribe callbacks (ALREADY IMPLEMENTED in useWebSocket hook)
+- [x] Fix WebGL resource leaks (ALREADY CORRECT - WaterfallDisplay.tsx has cleanup)
+- [x] Store WebGL resources in refs (ALREADY IMPLEMENTED - uses refs for WebGL context)
+- [ ] Reduce debounce from 300ms to 100ms for hardware controls (TODO - if needed)
+- [ ] Add ResizeObserver for responsive canvas dimensions (TODO - enhancement)
+
+### P3 - Polish & Monitoring
+- [x] Wire Telemetry.tsx to real metrics (ALREADY IMPLEMENTED - telemetry-router.ts)
+- [x] Add real-time hardware status feedback (ALREADY IMPLEMENTED - device-router.ts getStatus)
+- [x] Implement proper error handling (ALREADY IMPLEMENTED - hardware-manager.ts error handling)
