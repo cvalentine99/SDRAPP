@@ -263,3 +263,15 @@ Based on actual gx10-alpha hardware specs:
 - [x] Add FPS counter to verify 60 FPS performance
 - [x] Initialize WebSocket server in server/_core/index.ts
 - [x] Test WebSocket connection (verified clients connecting successfully)
+
+
+## Phase 1.1b: Wire FFT Data to WaterfallDisplay (Dec 23, 2025)
+
+- [x] Update WaterfallDisplay.tsx to accept FFT data as prop
+- [x] Remove random data generation from WaterfallDisplay
+- [x] Pass currentFFTData from Spectrum.tsx to WaterfallDisplay
+- [x] Verify DemoHardwareManager emits FFT events at 60 FPS (confirmed in code)
+- [x] Auto-start hardware manager on server initialization
+- [x] Map dBm FFT data (-100 to 0) to texture format (0-255)
+- [ ] Test real-time FFT visualization in browser (browser issues, needs manual verification)
+- [ ] Verify FPS counter shows 60 FPS in demo mode (needs manual verification)

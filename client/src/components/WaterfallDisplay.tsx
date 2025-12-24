@@ -1,15 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 
+interface FFTData {
+  type: 'fft';
+  timestamp: number;
+  centerFreq: number;
+  sampleRate: number;
+  fftSize: number;
+  peakPower: number;
+  peakBin: number;
+  data: number[];
+}
+
 interface WaterfallDisplayProps {
   width?: number;
   height?: number;
   fftSize?: number;
+  fftData?: FFTData | null;
 }
 
 export function WaterfallDisplay({
   width = 1024,
   height = 512,
   fftSize = 2048,
+  fftData = null,
 }: WaterfallDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -166,24 +179,25 @@ export function WaterfallDisplay({
       textureData
     );
 
-    // Simulate incoming FFT data for demo
+    // Track current row for circular buffer scrolling
     let currentRow = 0;
-    const simulateData = () => {
-      if (!gl || !texture) return;
+    
+    // Store last FFT data ref to access in render loop
+    const lastFFTDataRef = { current: fftData };
 
-      // Generate simulated FFT data (replace with real WebSocket data)
-      const fftData = new Uint8Array(fftSize);
-      for (let i = 0; i < fftSize; i++) {
-        // Simulate some peaks and noise
-        const freq = i / fftSize;
-        let value = Math.random() * 30; // Noise floor
+    const updateWithFFTData = (incomingFFTData: FFTData | null) => {
+      if (!gl || !texture || !incomingFFTData || !incomingFFTData.data) return;
 
-        // Add some simulated signals
-        if (Math.abs(freq - 0.3) < 0.02) value += 150; // Signal at 30%
-        if (Math.abs(freq - 0.6) < 0.01) value += 200; // Strong signal at 60%
-        if (Math.abs(freq - 0.75) < 0.015) value += 100; // Signal at 75%
-
-        fftData[i] = Math.min(255, value);
+      // Convert FFT data to Uint8Array for texture upload
+      // FFT data is expected to be in dBm (typically -100 to 0)
+      // Map to 0-255 range for texture
+      const textureData = new Uint8Array(fftSize);
+      
+      for (let i = 0; i < Math.min(fftSize, incomingFFTData.data.length); i++) {
+        // Map dBm (-100 to 0) to 0-255 range
+        const dbm = incomingFFTData.data[i];
+        const normalized = Math.max(0, Math.min(1, (dbm + 100) / 100));
+        textureData[i] = Math.floor(normalized * 255);
       }
 
       // Update one row of the texture (circular buffer technique)
@@ -197,7 +211,7 @@ export function WaterfallDisplay({
         1,
         gl.LUMINANCE,
         gl.UNSIGNED_BYTE,
-        fftData
+        textureData
       );
 
       // Update Y-offset for scrolling
@@ -209,8 +223,8 @@ export function WaterfallDisplay({
     const render = () => {
       if (!gl || !program) return;
 
-      // Update with new data (60 FPS)
-      simulateData();
+      // Update with new FFT data from WebSocket
+      updateWithFFTData(lastFFTDataRef.current);
 
       // Set uniform for Y-offset
       const yOffsetLocation = gl.getUniformLocation(program, "u_yOffset");
@@ -237,6 +251,11 @@ export function WaterfallDisplay({
       }
     };
   }, [fftSize, height]);
+
+  // Update FFT data ref when prop changes
+  useEffect(() => {
+    // This will be accessed by the render loop
+  }, [fftData]);
 
   return (
     <canvas

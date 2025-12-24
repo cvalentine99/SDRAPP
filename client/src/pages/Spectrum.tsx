@@ -74,7 +74,7 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-4rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-secondary/30 relative overflow-hidden">
-              <WaterfallDisplay width={1024} height={512} fftSize={2048} />
+              <WaterfallDisplay width={1024} height={512} fftSize={2048} fftData={currentFFTData} />
               {/* HUD Corners */}
               <div className="absolute top-2 left-2 w-8 h-8 border-l-2 border-t-2 border-secondary/50 pointer-events-none" />
               <div className="absolute top-2 right-2 w-8 h-8 border-r-2 border-t-2 border-secondary/50 pointer-events-none" />

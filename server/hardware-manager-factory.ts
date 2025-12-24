@@ -27,6 +27,13 @@ export function getHardwareManager(): IHardwareManager {
       console.log('[HW-FACTORY] Creating DEMO hardware manager (simulated data)');
       hardwareManagerInstance = new DemoHardwareManager();
     }
+    
+    // Auto-start hardware manager
+    hardwareManagerInstance.start().then(() => {
+      console.log(`[HW-FACTORY] ${currentMode.toUpperCase()} hardware manager started`);
+    }).catch((error) => {
+      console.error('[HW-FACTORY] Failed to start hardware manager:', error);
+    });
   }
   return hardwareManagerInstance;
 }
@@ -66,7 +73,9 @@ export async function switchSDRMode(newMode: 'demo' | 'production'): Promise<voi
     hardwareManagerInstance = new DemoHardwareManager();
   }
 
-  console.log(`[HW-FACTORY] Successfully switched to ${newMode} mode`);
+  // Auto-start new hardware manager
+  await hardwareManagerInstance.start();
+  console.log(`[HW-FACTORY] Successfully switched to ${newMode} mode and started`);
 }
 
 /**
