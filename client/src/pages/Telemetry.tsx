@@ -6,8 +6,21 @@ import {
   Network,
   Zap,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 export default function Telemetry() {
+  const { data: metrics, isLoading } = trpc.telemetry.getMetrics.useQuery(undefined, {
+    refetchInterval: 1000, // Refresh every second
+  });
+
+  if (isLoading) {
+    return (
+      <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+        <div className="text-primary">Loading telemetry...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">
       <div className="max-w-7xl mx-auto space-y-4">
@@ -23,7 +36,8 @@ export default function Telemetry() {
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <div className="text-4xl font-mono text-primary mb-2">60</div>
+                <div className="text-4xl font-mono text-primary mb-2">{metrics?.temperature.toFixed(1) || "--"}</div>
+                <div className="text-xs text-muted-foreground">°C</div>
                 <div className="text-xs text-muted-foreground">FPS</div>
               </div>
             </CardContent>
@@ -42,9 +56,9 @@ export default function Telemetry() {
             <CardContent>
               <div className="text-center">
                 <div className="text-4xl font-mono text-secondary mb-2">
-                  123
+                  {metrics?.usbBandwidth.toFixed(1) || "--"}
                 </div>
-                <div className="text-xs text-muted-foreground">KB/s</div>
+                <div className="text-xs text-muted-foreground">MB/s</div>
               </div>
             </CardContent>
           </Card>

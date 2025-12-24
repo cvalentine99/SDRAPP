@@ -21,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 
 export default function Device() {
   const [dcOffsetCorrection, setDcOffsetCorrection] = useState(true);
@@ -29,6 +30,26 @@ export default function Device() {
   const [lnaGain, setLnaGain] = useState([30]);
   const [tiaGain, setTiaGain] = useState([12]);
   const [pgaGain, setPgaGain] = useState([20]);
+  
+  // Fetch current device config
+  const { data: deviceConfig } = trpc.device.getConfig.useQuery();
+  const { data: deviceStatus } = trpc.device.getStatus.useQuery();
+  
+  // Mutations
+  const setFrequencyMutation = trpc.device.setFrequency.useMutation({
+    onSuccess: () => console.log("Frequency updated"),
+    onError: (error) => console.error("Error:", error.message),
+  });
+  
+  const setGainMutation = trpc.device.setGain.useMutation({
+    onSuccess: () => console.log("Gain updated"),
+    onError: (error) => console.error("Error:", error.message),
+  });
+  
+  const setSampleRateMutation = trpc.device.setSampleRate.useMutation({
+    onSuccess: () => console.log("Sample rate updated"),
+    onError: (error) => console.error("Error:", error.message),
+  });
 
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">

@@ -204,3 +204,35 @@
 - [ ] Test all tRPC queries and mutations
 - [ ] Verify error handling and loading states
 - [ ] Test authentication flow
+
+
+## Frontend-Backend Wiring (Dec 24, 2025)
+
+### Device Page
+- [ ] Wire frequency input to trpc.device.setFrequency mutation
+- [ ] Wire gain slider to trpc.device.setGain mutation
+- [ ] Wire sample rate selector to trpc.device.setSampleRate mutation
+- [ ] Add loading states and error handling
+- [ ] Display current config from trpc.device.getConfig query
+
+### Telemetry Page
+- [ ] Wire to trpc.telemetry.getMetrics query
+- [ ] Display real-time metrics (temperature, GPS/PLL lock, USB bandwidth)
+- [ ] Add auto-refresh with useQuery refetchInterval
+- [ ] Show connection status indicators
+
+### Recording Page
+- [ ] Wire to trpc.recording.list query for recordings table
+- [ ] Wire START button to trpc.recording.start mutation
+- [ ] Wire DELETE buttons to trpc.recording.delete mutation
+- [ ] Add recording progress indicator
+- [ ] Handle empty state when no recordings exist
+
+### WebSocket FFT Streaming
+- [ ] Create WebSocket server endpoint (/ws/fft)
+- [ ] Implement FFT data broadcasting from hardware manager
+- [ ] Create useWebSocketFFT hook on frontend
+- [ ] Wire Spectrum page to WebSocket FFT data
+- [ ] Update WaterfallDisplay to consume real FFT data
+- [ ] Add connection status indicator
+- [ ] Test 60 FPS performance

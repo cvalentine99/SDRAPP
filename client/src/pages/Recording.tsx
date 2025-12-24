@@ -14,32 +14,44 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
 
 export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [frequency, setFrequency] = useState(915e6);
+  const [sampleRate, setSampleRate] = useState(10e6);
+  const [duration, setDuration] = useState(60);
+  const [gain, setGain] = useState(50);
 
-  // Simulated recording history
-  const recordings = [
-    {
-      id: 1,
-      filename: "capture_915MHz_20250123_102345.sigmf",
-      frequency: "915.0 MHz",
-      sampleRate: "10 MSPS",
-      duration: "5m 23s",
-      size: "3.2 GB",
-      timestamp: "2025-01-23 10:23:45",
+  // Fetch recordings from backend
+  const { data: recordings = [], refetch } = trpc.recording.list.useQuery();
+  
+  // Mutations
+  const startRecording = trpc.recording.start.useMutation({
+    onSuccess: () => {
+      console.log("Recording started");
+      setIsRecording(true);
+      refetch();
     },
-    {
-      id: 2,
-      filename: "capture_2.4GHz_20250123_095612.sigmf",
-      frequency: "2.4 GHz",
-      sampleRate: "20 MSPS",
-      duration: "2m 15s",
-      size: "2.7 GB",
-      timestamp: "2025-01-23 09:56:12",
+    onError: (error) => console.error("Failed to start recording:", error.message),
+  });
+  
+  const deleteRecording = trpc.recording.delete.useMutation({
+    onSuccess: () => {
+      console.log("Recording deleted");
+      refetch();
     },
-  ];
+    onError: (error) => console.error("Failed to delete recording:", error.message),
+  });
+  
+  const handleStartRecording = () => {
+    startRecording.mutate({ frequency, sampleRate, duration, gain });
+  };
+  
+  const handleDeleteRecording = (id: number) => {
+    deleteRecording.mutate({ id });
+  };
 
   return (
     <div className="h-[calc(100vh-8rem)] overflow-y-auto p-4">
@@ -324,20 +336,20 @@ export default function Recording() {
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" />
                         <span className="text-sm font-mono text-foreground">
-                          {recording.filename}
+                          {recording.filePath.split('/').pop()}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
                         <div>
                           <span className="text-muted-foreground">Freq: </span>
                           <span className="text-secondary">
-                            {recording.frequency}
+                            {(recording.frequency / 1e6).toFixed(1)} MHz
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Rate: </span>
                           <span className="text-secondary">
-                            {recording.sampleRate}
+                            {(recording.sampleRate / 1e6).toFixed(1)} MSPS
                           </span>
                         </div>
                         <div>
@@ -345,17 +357,17 @@ export default function Recording() {
                             Duration:{" "}
                           </span>
                           <span className="text-primary">
-                            {recording.duration}
+                            {recording.duration}s
                           </span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Size: </span>
-                          <span className="text-primary">{recording.size}</span>
+                          <span className="text-primary">{(recording.fileSize / 1e9).toFixed(2)} GB</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Time: </span>
                           <span className="text-muted-foreground">
-                            {recording.timestamp}
+                            {new Date(recording.createdAt).toLocaleString()}
                           </span>
                         </div>
                       </div>
