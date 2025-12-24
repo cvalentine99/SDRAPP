@@ -275,3 +275,13 @@ Based on actual gx10-alpha hardware specs:
 - [x] Map dBm FFT data (-100 to 0) to texture format (0-255)
 - [ ] Test real-time FFT visualization in browser (browser issues, needs manual verification)
 - [ ] Verify FPS counter shows 60 FPS in demo mode (needs manual verification)
+
+
+## UHD Tools Integration (Dec 24, 2025)
+
+- [x] Copy pre-compiled UHD tools to hardware/bin directory (17 tools)
+- [x] Create hardware verification script (verify_b210.sh)
+- [x] Update DEPLOYMENT-GX10-ALPHA.md with UHD tools usage instructions
+- [x] Create hardware/bin/README.md with tool documentation
+- [ ] Add uhd_find_devices check to production hardware manager (future enhancement)
+- [ ] Document uhd_usrp_probe output format for telemetry parsing (future enhancement)

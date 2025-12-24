@@ -33,8 +33,9 @@ sudo apt install -y libuhd-dev uhd-host fftw3-dev
 # Install build tools
 sudo apt install -y cmake g++ pkg-config
 
-# Verify UHD installation
-uhd_find_devices
+# NOTE: Pre-compiled UHD tools are included in hardware/bin/
+# If system UHD tools are not available, use the bundled versions:
+# ./hardware/bin/uhd_find_devices
 
 # Expected output:
 # [INFO] [UHD] linux; GNU C++ version 11.4.0; Boost_107400; UHD_4.x.x.x
@@ -52,8 +53,29 @@ uhd_find_devices
 
 ## Step 2: Verify B210 Hardware
 
+**Option A: Use automated verification script (recommended)**
+
 ```bash
-# Check B210 connection
+# Navigate to project directory
+cd /path/to/ettus-sdr-web
+
+# Run hardware verification script
+./hardware/verify_b210.sh
+
+# This script will:
+# - Check UHD configuration
+# - Detect USRP devices
+# - Probe B210 details
+# - Check GPSDO status (if installed)
+```
+
+**Option B: Manual verification**
+
+```bash
+# Check B210 connection (use bundled tool if system uhd not available)
+./hardware/bin/uhd_usrp_probe --args="type=b200"
+
+# Or use system UHD if installed:
 uhd_usrp_probe
 
 # Verify GPSDO detection
@@ -63,7 +85,7 @@ uhd_usrp_probe
 #   GPS Locked: true
 
 # Test GPS lock status
-watch -n 1 'uhd_usrp_probe | grep -A 5 "GPS"'
+watch -n 1 './hardware/bin/uhd_usrp_probe --args="type=b200" | grep -A 5 "GPS"'
 
 # Wait for GPS lock (can take 5-15 minutes on first boot)
 # GPS Locked should show "true"
