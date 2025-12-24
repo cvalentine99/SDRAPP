@@ -8,6 +8,8 @@
  *
  * Features:
  * - Binary FFT output mode (--binary) for 70% bandwidth reduction
+ * - Shared memory output mode (--shm) for zero-copy IPC
+ * - Dual-channel mode (--channels 2) for MIMO/diversity reception
  * - Runtime parameter control via Unix domain socket (no restart required)
  * - JSON FFT output mode for backward compatibility
  */
@@ -23,6 +25,7 @@
 #include <csignal>
 #include <complex>
 #include <vector>
+#include <array>
 #include <cmath>
 #include <chrono>
 #include <iomanip>
@@ -34,6 +37,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+
+// Shared memory FFT buffer for zero-copy IPC
+#include "shared_fft_buffer.hpp"
 
 namespace po = boost::program_options;
 
@@ -382,8 +388,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     // Command line options
     std::string device_args, subdev, ant, ref, clock_source;
     double freq, rate, gain, bw;
-    size_t fft_size;
-    bool use_gpsdo, binary_mode;
+    size_t fft_size, num_channels;
+    bool use_gpsdo, binary_mode, shm_mode;
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -394,12 +400,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
         ("gain", po::value<double>(&gain)->default_value(50), "RX gain in dB")
         ("bw", po::value<double>(&bw)->default_value(10e6), "Analog bandwidth in Hz")
         ("ant", po::value<std::string>(&ant)->default_value("RX2"), "Antenna selection")
-        ("subdev", po::value<std::string>(&subdev)->default_value("A:A"), "Subdevice specification")
+        ("subdev", po::value<std::string>(&subdev)->default_value(""), "Subdevice specification (auto-selected if empty)")
         ("ref", po::value<std::string>(&ref)->default_value("internal"), "Reference source (internal/external/gpsdo)")
         ("clock", po::value<std::string>(&clock_source)->default_value("internal"), "Clock source")
         ("fft-size", po::value<size_t>(&fft_size)->default_value(2048), "FFT size")
         ("gpsdo", po::value<bool>(&use_gpsdo)->default_value(true), "Use GPSDO if available")
         ("binary", po::value<bool>(&binary_mode)->default_value(false), "Use binary output format")
+        ("shm", po::value<bool>(&shm_mode)->default_value(false), "Use shared memory output (zero-copy IPC)")
+        ("channels", po::value<size_t>(&num_channels)->default_value(1), "Number of RX channels (1 or 2)")
     ;
 
     po::variables_map vm;
@@ -427,6 +435,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
                   << B210_MIN_BW/1e6 << "-" << B210_MAX_BW/1e6 << " MHz]" << std::endl;
         return EXIT_FAILURE;
     }
+    if (num_channels < 1 || num_channels > sdr::MAX_CHANNELS) {
+        std::cerr << "Error: Channel count " << num_channels << " out of range [1-"
+                  << sdr::MAX_CHANNELS << "]" << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    // Auto-select subdev based on channel count
+    if (subdev.empty()) {
+        subdev = (num_channels == 2) ? "A:A A:B" : "A:A";
+    }
 
     // Initialize atomic state
     current_frequency.store(freq);
@@ -435,6 +453,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
     if (binary_mode) {
         std::cerr << "[SDR] Binary output mode enabled" << std::endl;
+    }
+    if (shm_mode) {
+        std::cerr << "[SDR] Shared memory output mode enabled" << std::endl;
+    }
+    if (num_channels > 1) {
+        std::cerr << "[SDR] Dual-channel mode enabled (" << num_channels << " channels)" << std::endl;
     }
 
     // Create USRP device
@@ -486,48 +510,67 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
         usrp->set_time_source(ref);
     }
 
-    // Configure RX
+    // Configure RX for all channels
     usrp->set_rx_subdev_spec(subdev);
     usrp->set_rx_rate(rate);
-    usrp->set_rx_freq(freq);
-    usrp->set_rx_gain(gain);
-    usrp->set_rx_bandwidth(bw);
-    usrp->set_rx_antenna(ant);
+
+    // Configure each channel
+    for (size_t ch = 0; ch < num_channels; ++ch) {
+        usrp->set_rx_freq(freq, ch);
+        usrp->set_rx_gain(gain, ch);
+        usrp->set_rx_bandwidth(bw, ch);
+        usrp->set_rx_antenna(ant, ch);
+
+        std::cerr << boost::format("Channel %zu configured: Freq=%.3f MHz, Gain=%.1f dB, BW=%.2f MHz")
+                  % ch % (usrp->get_rx_freq(ch)/1e6) % usrp->get_rx_gain(ch)
+                  % (usrp->get_rx_bandwidth(ch)/1e6) << std::endl;
+    }
 
     std::this_thread::sleep_for(std::chrono::seconds(1)); // Allow hardware to settle
 
-    // Update atomics with actual values
-    current_frequency.store(usrp->get_rx_freq());
-    current_gain.store(usrp->get_rx_gain());
+    // Update atomics with actual values (from channel 0)
+    current_frequency.store(usrp->get_rx_freq(0));
+    current_gain.store(usrp->get_rx_gain(0));
     current_sample_rate.store(usrp->get_rx_rate());
 
     // Print actual settings
     std::cerr << boost::format("Actual RX Rate: %f Msps") % (usrp->get_rx_rate()/1e6) << std::endl;
-    std::cerr << boost::format("Actual RX Freq: %f MHz") % (usrp->get_rx_freq()/1e6) << std::endl;
-    std::cerr << boost::format("Actual RX Gain: %f dB") % usrp->get_rx_gain() << std::endl;
-    std::cerr << boost::format("Actual RX BW: %f MHz") % (usrp->get_rx_bandwidth()/1e6) << std::endl;
+    std::cerr << boost::format("Actual RX Freq: %f MHz") % (usrp->get_rx_freq(0)/1e6) << std::endl;
+    std::cerr << boost::format("Actual RX Gain: %f dB") % usrp->get_rx_gain(0) << std::endl;
+    std::cerr << boost::format("Actual RX BW: %f MHz") % (usrp->get_rx_bandwidth(0)/1e6) << std::endl;
 
     // Start control socket thread
     std::thread control_thread(control_socket_thread, usrp);
 
-    // Setup streaming
+    // Setup streaming with channel specification
     uhd::stream_args_t stream_args("fc32", "sc16");
+    for (size_t ch = 0; ch < num_channels; ++ch) {
+        stream_args.channels.push_back(ch);
+    }
     uhd::rx_streamer::sptr rx_stream = usrp->get_rx_stream(stream_args);
 
     uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
     stream_cmd.stream_now = true;
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    // Allocate buffers
-    std::vector<std::complex<float>> buffer(fft_size);
-    std::vector<std::complex<float>*> buffs{buffer.data()};
+    // Allocate buffers for all channels
+    std::array<std::vector<std::complex<float>>, sdr::MAX_CHANNELS> buffers;
+    std::vector<std::complex<float>*> buffs;
+    for (size_t ch = 0; ch < num_channels; ++ch) {
+        buffers[ch].resize(fft_size);
+        buffs.push_back(buffers[ch].data());
+    }
 
-    // FFTW setup
-    fftwf_complex* fft_in = fftwf_alloc_complex(fft_size);
-    fftwf_complex* fft_out = fftwf_alloc_complex(fft_size);
-    fftwf_plan plan = fftwf_plan_dft_1d(fft_size, fft_in, fft_out, FFTW_FORWARD, FFTW_MEASURE);
+    // FFTW setup - one FFT plan per channel
+    std::array<fftwf_complex*, sdr::MAX_CHANNELS> fft_in{}, fft_out{};
+    std::array<fftwf_plan, sdr::MAX_CHANNELS> plans{};
+    for (size_t ch = 0; ch < num_channels; ++ch) {
+        fft_in[ch] = fftwf_alloc_complex(fft_size);
+        fft_out[ch] = fftwf_alloc_complex(fft_size);
+        plans[ch] = fftwf_plan_dft_1d(fft_size, fft_in[ch], fft_out[ch], FFTW_FORWARD, FFTW_MEASURE);
+    }
 
-    // Hann window
+    // Hann window (shared across channels)
     std::vector<float> window(fft_size);
     for (size_t i = 0; i < fft_size; i++) {
         window[i] = 0.5f * (1.0f - std::cos(2.0f * M_PI * i / (fft_size - 1)));
@@ -537,15 +580,34 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     std::signal(SIGINT, &sig_int_handler);
     std::signal(SIGTERM, &sig_int_handler);
 
+    // Create shared memory producer if enabled
+    std::unique_ptr<sdr::SharedFFTProducer> shm_producer;
+    if (shm_mode) {
+        try {
+            shm_producer = std::make_unique<sdr::SharedFFTProducer>(
+                sdr::DEFAULT_RING_SIZE, fft_size, num_channels);
+            shm_producer->set_sample_rate(rate);
+        } catch (const std::exception& e) {
+            std::cerr << "[SDR] Failed to create shared memory: " << e.what() << std::endl;
+            std::cerr << "[SDR] Falling back to stdout output" << std::endl;
+            shm_mode = false;
+        }
+    }
+
     uhd::rx_metadata_t md;
     uint32_t frame_count = 0;
     auto last_status_time = std::chrono::steady_clock::now();
-    std::vector<float> power_db(fft_size);
 
-    std::cerr << "[SDR] Streaming started..." << std::endl;
+    // Power spectrum arrays - one per channel
+    std::array<std::vector<float>, sdr::MAX_CHANNELS> power_db;
+    for (size_t ch = 0; ch < num_channels; ++ch) {
+        power_db[ch].resize(fft_size);
+    }
+
+    std::cerr << "[SDR] Streaming started (" << num_channels << " channel(s))..." << std::endl;
 
     while (!stop_signal_called) {
-        // Receive samples
+        // Receive samples (all channels at once)
         size_t num_rx_samps = rx_stream->recv(buffs, fft_size, md, 3.0);
 
         // Handle errors
@@ -565,31 +627,42 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
             continue;
         }
 
-        // Apply window and copy to FFT input
-        for (size_t i = 0; i < fft_size; i++) {
-            fft_in[i][0] = buffer[i].real() * window[i];
-            fft_in[i][1] = buffer[i].imag() * window[i];
-        }
+        // Process each channel
+        std::array<int16_t, sdr::MAX_CHANNELS> peak_bins{};
+        std::array<float, sdr::MAX_CHANNELS> peak_powers{};
+        std::array<const float*, sdr::MAX_CHANNELS> spectrum_ptrs{};
 
-        // Compute FFT
-        fftwf_execute(plan);
-
-        // Compute power spectrum (dBFS) and find peak
-        float peak_power = -200.0f;
-        int16_t peak_bin = 0;
-
-        for (size_t i = 0; i < fft_size; i++) {
-            // FFT shift
-            size_t j = (i + fft_size/2) % fft_size;
-            float real = fft_out[j][0];
-            float imag = fft_out[j][1];
-            float power = (real*real + imag*imag) / (fft_size * fft_size);
-            power_db[i] = 10.0f * std::log10(power + 1e-20f);  // Avoid log(0)
-
-            if (power_db[i] > peak_power) {
-                peak_power = power_db[i];
-                peak_bin = static_cast<int16_t>(i);
+        for (size_t ch = 0; ch < num_channels; ++ch) {
+            // Apply window and copy to FFT input
+            for (size_t i = 0; i < fft_size; i++) {
+                fft_in[ch][i][0] = buffers[ch][i].real() * window[i];
+                fft_in[ch][i][1] = buffers[ch][i].imag() * window[i];
             }
+
+            // Compute FFT
+            fftwf_execute(plans[ch]);
+
+            // Compute power spectrum (dBFS) and find peak
+            float peak_power = -200.0f;
+            int16_t peak_bin = 0;
+
+            for (size_t i = 0; i < fft_size; i++) {
+                // FFT shift
+                size_t j = (i + fft_size/2) % fft_size;
+                float real = fft_out[ch][j][0];
+                float imag = fft_out[ch][j][1];
+                float power = (real*real + imag*imag) / (fft_size * fft_size);
+                power_db[ch][i] = 10.0f * std::log10(power + 1e-20f);  // Avoid log(0)
+
+                if (power_db[ch][i] > peak_power) {
+                    peak_power = power_db[ch][i];
+                    peak_bin = static_cast<int16_t>(i);
+                }
+            }
+
+            peak_bins[ch] = peak_bin;
+            peak_powers[ch] = peak_power;
+            spectrum_ptrs[ch] = power_db[ch].data();
         }
 
         // Get current parameters (may have been changed via control socket)
@@ -597,14 +670,22 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
         double curr_rate = current_sample_rate.load();
         bool curr_gps = gps_locked.load();
 
-        // Output FFT data
-        if (binary_mode) {
+        // Output FFT data via selected method
+        if (shm_mode && shm_producer) {
+            // Zero-copy shared memory output (supports multi-channel)
+            shm_producer->publish_multi(frame_count, md.time_spec.get_real_secs(),
+                                       curr_freq, spectrum_ptrs.data(), num_channels,
+                                       fft_size, peak_bins.data(), peak_powers.data(),
+                                       curr_gps);
+        } else if (binary_mode) {
+            // Binary stdout output (primary channel only for backward compat)
             output_binary_fft(frame_count, md.time_spec.get_real_secs(),
                              curr_freq, curr_rate, fft_size,
-                             peak_bin, peak_power, power_db, curr_gps);
+                             peak_bins[0], peak_powers[0], power_db[0], curr_gps);
         } else {
+            // JSON stdout output (primary channel only for backward compat)
             output_json_fft(md.time_spec.get_real_secs(), curr_freq, curr_rate,
-                           fft_size, peak_power, peak_bin, power_db);
+                           fft_size, peak_powers[0], peak_bins[0], power_db[0]);
         }
 
         frame_count++;
@@ -622,10 +703,12 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
                 tx_temp = std::stof(usrp->get_tx_sensor("temp").value);
             } catch (...) {}
 
-            if (binary_mode) {
-                output_binary_status(frame_count, gps, rx_temp, tx_temp);
-            } else {
-                output_json_status(frame_count, gps, rx_temp, tx_temp);
+            if (!shm_mode) {
+                if (binary_mode) {
+                    output_binary_status(frame_count, gps, rx_temp, tx_temp);
+                } else {
+                    output_json_status(frame_count, gps, rx_temp, tx_temp);
+                }
             }
 
             last_status_time = now;
@@ -636,9 +719,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     stream_cmd.stream_mode = uhd::stream_cmd_t::STREAM_MODE_STOP_CONTINUOUS;
     rx_stream->issue_stream_cmd(stream_cmd);
 
-    fftwf_destroy_plan(plan);
-    fftwf_free(fft_in);
-    fftwf_free(fft_out);
+    // Clean up FFTW resources for all channels
+    for (size_t ch = 0; ch < num_channels; ++ch) {
+        fftwf_destroy_plan(plans[ch]);
+        fftwf_free(fft_in[ch]);
+        fftwf_free(fft_out[ch]);
+    }
+
+    // Clean up shared memory producer
+    shm_producer.reset();
 
     // Wait for control thread to finish
     control_thread.join();

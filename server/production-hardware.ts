@@ -2,13 +2,15 @@ import { EventEmitter } from "events";
 import { spawn, ChildProcess } from "child_process";
 import * as net from "net";
 import path from "path";
+import { SharedMemoryReader, FFTFrame } from "./shared-memory-reader";
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
 const CONTROL_SOCKET_PATH = "/tmp/sdr_streamer.sock";
-const USE_BINARY_MODE = true;  // Enable binary protocol for 70% bandwidth reduction
+const USE_BINARY_MODE = true;   // Enable binary protocol for 70% bandwidth reduction
+const USE_SHARED_MEMORY = false; // Enable shared memory for zero-copy IPC (P2 feature)
 
 // ============================================================================
 // Types
@@ -29,15 +31,23 @@ export interface HardwareStatus {
   frameRate: number;
 }
 
+interface ChannelData {
+  fftData: number[];  // dBFS values
+  peakBin: number;
+  peakPower: number;
+}
+
 interface FFTData {
   timestamp: number;
   centerFreq: number;
   sampleRate: number;
   fftSize: number;
-  fftData: number[];  // dBFS values
+  fftData: number[];  // dBFS values (primary channel for backward compat)
   peakBin?: number;
   peakPower?: number;
   gpsLocked?: boolean;
+  channelCount?: number;
+  channels?: ChannelData[];  // All channels (P3 dual-channel support)
 }
 
 interface StatusData {
@@ -328,9 +338,11 @@ export class ProductionHardwareManager extends EventEmitter {
 
   private sdrProcess: ChildProcess | null = null;
   private controlSocket: ControlSocketClient | null = null;
+  private shmReader: SharedMemoryReader | null = null;
   private binaryParser = new BinaryProtocolParser();
   private isStreaming = false;
   private useBinaryMode = USE_BINARY_MODE;
+  private useSharedMemory = USE_SHARED_MEMORY;
 
   // Frame rate tracking
   private frameCount = 0;
@@ -340,6 +352,7 @@ export class ProductionHardwareManager extends EventEmitter {
     super();
     console.log("[ProductionHW] Initialized for B210 hardware");
     console.log("[ProductionHW] Binary mode:", this.useBinaryMode ? "enabled" : "disabled");
+    console.log("[ProductionHW] Shared memory:", this.useSharedMemory ? "enabled" : "disabled");
   }
 
   async start(): Promise<void> {
@@ -351,6 +364,11 @@ export class ProductionHardwareManager extends EventEmitter {
     try {
       await this.spawnSDRStreamer();
       this.status.isRunning = true;
+
+      // If using shared memory, start the reader
+      if (this.useSharedMemory) {
+        this.startSharedMemoryReader();
+      }
 
       // Connect control socket after short delay to let sdr_streamer initialize
       setTimeout(async () => {
@@ -370,7 +388,69 @@ export class ProductionHardwareManager extends EventEmitter {
     }
   }
 
+  private startSharedMemoryReader(): void {
+    this.shmReader = new SharedMemoryReader({
+      pollIntervalMs: 1,
+      maxFramesPerPoll: 5,
+    });
+
+    this.shmReader.on("frame", (frame: FFTFrame) => {
+      // Update frame rate calculation
+      this.frameCount++;
+      const now = Date.now();
+      const elapsed = (now - this.frameCountStartTime) / 1000;
+      if (elapsed >= 1.0) {
+        this.status.frameRate = this.frameCount / elapsed;
+        this.frameCount = 0;
+        this.frameCountStartTime = now;
+      }
+
+      // Update GPS lock status
+      this.status.gpsLock = frame.gpsLocked;
+
+      // Convert shared memory frame to FFTData format
+      const fftData: FFTData = {
+        timestamp: frame.timestamp,
+        centerFreq: frame.centerFreq,
+        sampleRate: frame.sampleRate,
+        fftSize: frame.fftSize,
+        fftData: Array.from(frame.channels[0].spectrum),
+        peakBin: frame.channels[0].peakBin,
+        peakPower: frame.channels[0].peakPower,
+        gpsLocked: frame.gpsLocked,
+        channelCount: frame.channelCount,
+        channels: frame.channels.map(ch => ({
+          fftData: Array.from(ch.spectrum),
+          peakBin: ch.peakBin,
+          peakPower: ch.peakPower,
+        })),
+      };
+
+      this.emit("fft", fftData);
+    });
+
+    this.shmReader.on("error", (error: Error) => {
+      console.error("[ProductionHW] Shared memory error:", error);
+    });
+
+    this.shmReader.on("connected", () => {
+      console.log("[ProductionHW] Shared memory reader connected - zero-copy IPC active");
+    });
+
+    this.shmReader.on("disconnected", () => {
+      console.log("[ProductionHW] Shared memory reader disconnected");
+    });
+
+    this.shmReader.start();
+  }
+
   async stop(): Promise<void> {
+    // Stop shared memory reader first
+    if (this.shmReader) {
+      this.shmReader.stop();
+      this.shmReader = null;
+    }
+
     // Try graceful shutdown via control socket first
     if (this.controlSocket?.isConnected()) {
       try {
@@ -402,6 +482,7 @@ export class ProductionHardwareManager extends EventEmitter {
       rate: this.config.sampleRate / 1e6,
       gain: this.config.gain,
       binary: this.useBinaryMode,
+      shm: this.useSharedMemory,
     });
 
     const args = [
@@ -410,13 +491,23 @@ export class ProductionHardwareManager extends EventEmitter {
       "--gain", this.config.gain.toString(),
     ];
 
-    if (this.useBinaryMode) {
+    if (this.useSharedMemory) {
+      // Shared memory mode (highest performance - data via shm, not stdout)
+      args.push("--shm", "true");
+    } else if (this.useBinaryMode) {
+      // Binary stdout mode (good performance)
       args.push("--binary", "true");
     }
+    // else: JSON stdout mode (backward compatible)
 
     this.sdrProcess = spawn(binPath, args);
 
+    // Only parse stdout if not using shared memory
     this.sdrProcess.stdout?.on("data", (data: Buffer) => {
+      if (this.useSharedMemory) {
+        // Data comes via shared memory, ignore stdout
+        return;
+      }
       if (this.useBinaryMode) {
         this.handleBinaryData(data);
       } else {
