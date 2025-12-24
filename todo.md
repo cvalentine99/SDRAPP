@@ -285,3 +285,14 @@ Based on actual gx10-alpha hardware specs:
 - [x] Create hardware/bin/README.md with tool documentation
 - [ ] Add uhd_find_devices check to production hardware manager (future enhancement)
 - [ ] Document uhd_usrp_probe output format for telemetry parsing (future enhancement)
+
+
+## C++ Daemons for Hardware Integration (Dec 24, 2025)
+
+- [x] sdr_streamer.cpp - Real-time FFT streaming daemon (already exists)
+- [x] iq_recorder.cpp - IQ sample recording daemon (records raw IQ to file)
+- [x] freq_scanner.cpp - Frequency scanning daemon (scans range, reports peaks)
+- [x] Update CMakeLists.txt to build all three daemons
+- [x] Create BUILD_INSTRUCTIONS.md for gx10-alpha compilation
+- [ ] Test compilation on ARM64 target (requires gx10-alpha access)
+- [ ] Test sdr_streamer with ProductionHardwareManager (requires B210 hardware)

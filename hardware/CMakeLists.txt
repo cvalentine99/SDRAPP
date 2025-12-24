@@ -17,7 +17,7 @@ include_directories(
     ${FFTW3F_INCLUDE_DIRS}
 )
 
-# SDR Streamer executable
+# SDR Streamer executable - Real-time FFT streaming
 add_executable(sdr_streamer src/sdr_streamer.cpp)
 target_link_libraries(sdr_streamer
     ${UHD_LIBRARIES}
@@ -25,8 +25,23 @@ target_link_libraries(sdr_streamer
     ${FFTW3F_LIBRARIES}
 )
 
+# IQ Recorder executable - Record raw IQ samples to file
+add_executable(iq_recorder src/iq_recorder.cpp)
+target_link_libraries(iq_recorder
+    ${UHD_LIBRARIES}
+    ${Boost_LIBRARIES}
+)
+
+# Frequency Scanner executable - Scan frequency range for signals
+add_executable(freq_scanner src/freq_scanner.cpp)
+target_link_libraries(freq_scanner
+    ${UHD_LIBRARIES}
+    ${Boost_LIBRARIES}
+    ${FFTW3F_LIBRARIES}
+)
+
 # Install targets
-install(TARGETS sdr_streamer DESTINATION bin)
+install(TARGETS sdr_streamer iq_recorder freq_scanner DESTINATION bin)
 
 # Print configuration
 message(STATUS "UHD version: ${UHD_VERSION}")
