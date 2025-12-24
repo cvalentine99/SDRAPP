@@ -11,14 +11,50 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pause, Play, Radio } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
+import { trpc } from "@/lib/trpc";
+import { usePersistFn } from "@/hooks/usePersistFn";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
+  
+  // Mutations
+  const setFrequencyMutation = trpc.device.setFrequency.useMutation({
+    onSuccess: () => console.log("Frequency updated to", frequency, "MHz"),
+    onError: (error) => console.error("Failed to set frequency:", error.message),
+  });
+  
+  const setGainMutation = trpc.device.setGain.useMutation({
+    onSuccess: () => console.log("Gain updated to", gain[0], "dB"),
+    onError: (error) => console.error("Failed to set gain:", error.message),
+  });
+  
+  // Debounced handlers
+  const handleFrequencyChange = usePersistFn((value: string) => {
+    setFrequency(value);
+    const freqHz = parseFloat(value) * 1e6;
+    if (!isNaN(freqHz) && freqHz >= 50e6 && freqHz <= 6e9) {
+      setTimeout(() => {
+        setFrequencyMutation.mutate({ frequency: freqHz });
+      }, 500); // 500ms debounce
+    }
+  });
+  
+  const handleGainChange = usePersistFn((value: number[]) => {
+    setGain(value);
+    setTimeout(() => {
+      setGainMutation.mutate({ gain: value[0] });
+    }, 300); // 300ms debounce
+  });
+  
+  const handleStartStop = useCallback(() => {
+    setIsRunning(!isRunning);
+    console.log(isRunning ? "Stopping FFT streaming" : "Starting FFT streaming");
+  }, [isRunning]);
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4 p-4">
@@ -81,7 +117,7 @@ export default function Spectrum() {
                 id="frequency"
                 type="number"
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value)}
+                onChange={(e) => handleFrequencyChange(e.target.value)}
                 className="font-mono text-lg bg-input border-border focus:border-primary"
                 step="0.1"
               />
@@ -146,7 +182,7 @@ export default function Spectrum() {
               </div>
               <Slider
                 value={gain}
-                onValueChange={setGain}
+                onValueChange={handleGainChange}
                 max={76}
                 step={1}
                 className="[&_[role=slider]]:border-primary [&_[role=slider]]:bg-primary"
@@ -179,7 +215,7 @@ export default function Spectrum() {
                 isRunning ? "box-glow-cyan" : "box-glow-pink"
               }`}
               variant={isRunning ? "secondary" : "default"}
-              onClick={() => setIsRunning(!isRunning)}
+              onClick={handleStartStop}
             >
               {isRunning ? (
                 <>

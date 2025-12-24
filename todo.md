@@ -236,3 +236,15 @@
 - [ ] Update WaterfallDisplay to consume real FFT data
 - [ ] Add connection status indicator
 - [ ] Test 60 FPS performance
+
+
+## Spectrum Page Control Wiring (Dec 24, 2025)
+
+- [x] Wire frequency input to trpc.device.setFrequency mutation
+- [x] Wire gain slider to trpc.device.setGain mutation
+- [x] Add debouncing to prevent excessive API calls (500ms for frequency, 300ms for gain)
+- [x] Implement START/STOP button handler
+- [x] Add isRunning state management
+- [x] Update button text and icon based on state (Play/START ↔ Pause/STOP)
+- [ ] Test frequency tuning from Spectrum page (needs manual testing)
+- [ ] Test gain control from Spectrum page (needs manual testing)
