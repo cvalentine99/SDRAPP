@@ -7,6 +7,4 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  // SDR Mode: 'demo' for simulated data, 'production' for real B210 hardware
-  sdrMode: (process.env.SDR_MODE ?? "demo") as "demo" | "production",
 };

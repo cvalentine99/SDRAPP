@@ -10,55 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pause, Play, Radio, Wifi, WifiOff, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Pause, Play, Radio } from "lucide-react";
+import { useState } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
-import { useWebSocketFFT } from "@/hooks/useWebSocketFFT";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
-  const [currentFFTData, setCurrentFFTData] = useState<any>(null);
-
-  // WebSocket connection for real-time FFT data
-  const {
-    connectionStatus,
-    lastFFTData,
-    lastStatusData,
-    fpsCounter,
-    reconnect,
-    isConnected,
-  } = useWebSocketFFT({
-    autoConnect: true,
-    onFFTData: (data) => {
-      if (isRunning) {
-        setCurrentFFTData(data);
-      }
-    },
-    onError: (error) => {
-      console.error('[Spectrum] WebSocket error:', error);
-    },
-  });
-
-  // Get SDR mode to show in connection status
-  const { data: sdrMode } = trpc.system.getSDRMode.useQuery();
-
-  // Show connection status changes
-  useEffect(() => {
-    if (connectionStatus === 'connected') {
-      toast.success('Connected to SDR', {
-        description: `Streaming ${sdrMode?.mode || 'demo'} mode data`,
-      });
-    } else if (connectionStatus === 'disconnected') {
-      toast.error('Disconnected from SDR', {
-        description: 'Attempting to reconnect...',
-      });
-    }
-  }, [connectionStatus, sdrMode]);
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4 p-4">
@@ -74,7 +34,7 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-4rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-secondary/30 relative overflow-hidden">
-              <WaterfallDisplay width={1024} height={512} fftSize={2048} fftData={currentFFTData} />
+              <WaterfallDisplay width={1024} height={512} fftSize={2048} />
               {/* HUD Corners */}
               <div className="absolute top-2 left-2 w-8 h-8 border-l-2 border-t-2 border-secondary/50 pointer-events-none" />
               <div className="absolute top-2 right-2 w-8 h-8 border-r-2 border-t-2 border-secondary/50 pointer-events-none" />
@@ -237,36 +197,13 @@ export default function Spectrum() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-black/50 rounded p-2 border border-border">
                 <div className="text-muted-foreground">FFT Rate</div>
-                <div className="text-secondary font-mono">{fpsCounter} FPS</div>
+                <div className="text-secondary font-mono">60 FPS</div>
               </div>
               <div className="bg-black/50 rounded p-2 border border-border">
-                <div className="text-muted-foreground">Connection</div>
-                <div className="flex items-center gap-1">
-                  {isConnected ? (
-                    <Wifi className="w-3 h-3 text-green-500" />
-                  ) : (
-                    <WifiOff className="w-3 h-3 text-red-500" />
-                  )}
-                  <span className={`font-mono text-xs ${
-                    isConnected ? 'text-green-500' : 'text-red-500'
-                  }`}>
-                    {connectionStatus.toUpperCase()}
-                  </span>
-                </div>
+                <div className="text-muted-foreground">Throughput</div>
+                <div className="text-primary font-mono">123 KB/s</div>
               </div>
             </div>
-
-            {!isConnected && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full gap-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500/10"
-                onClick={reconnect}
-              >
-                <RefreshCw className="w-3 h-3" />
-                Reconnect
-              </Button>
-            )}
           </CardContent>
         </Card>
 

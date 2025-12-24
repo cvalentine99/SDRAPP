@@ -20,22 +20,9 @@ import {
   Radio,
   Zap,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { trpc } from "@/lib/trpc";
+import { useState } from "react";
 
 export default function Device() {
-  // tRPC hooks
-  const { data: config } = trpc.device.getConfig.useQuery();
-  const { data: status } = trpc.device.getStatus.useQuery(undefined, {
-    refetchInterval: 1000, // Poll every second
-  });
-  const setFrequencyMutation = trpc.device.setFrequency.useMutation();
-  const setGainMutation = trpc.device.setGain.useMutation();
-  const setSampleRateMutation = trpc.device.setSampleRate.useMutation();
-  const setBandwidthMutation = trpc.device.setBandwidth.useMutation();
-  const startMutation = trpc.device.start.useMutation();
-  const stopMutation = trpc.device.stop.useMutation();
-
   const [dcOffsetCorrection, setDcOffsetCorrection] = useState(true);
   const [iqBalanceCorrection, setIqBalanceCorrection] = useState(true);
   const [agcMode, setAgcMode] = useState(false);
