@@ -355,3 +355,24 @@
 - [x] Package hardware directory for transfer (hardware-deployment-gx10-alpha.tar.gz)
 - [x] Create step-by-step deployment guide for gx10-alpha (DEPLOYMENT_GUIDE.md)
 - [ ] Test scripts on gx10-alpha (requires physical hardware access)
+
+
+## Device Info Integration (Dec 24, 2025)
+
+- [x] Create device.getInfo tRPC procedure
+- [x] Spawn uhd_usrp_probe process and parse output
+- [x] Extract serial number, firmware, FPGA versions, GPSDO model
+- [x] Handle demo mode (return mock data) vs production mode (real probe)
+- [x] Update Device.tsx to call getInfo and display real metadata
+- [x] Update footer status bar (SDRLayout.tsx) to use real device info
+- [x] Add error handling for probe failures (fallback to mock data)
+- [ ] Test in demo mode (should work immediately)
+- [ ] Test in production mode (requires B210 hardware on gx10-alpha)
+
+## Automated Deployment Scripts (Dec 24, 2025)
+
+- [x] Create deploy_to_gx10.sh for automated SSH transfer
+- [x] Create remote_compile.sh for SSH-based remote compilation
+- [x] Add SSH key configuration instructions (in script comments)
+- [x] Document usage in QUICKSTART.md
+- [ ] Test scripts with real gx10-alpha server (requires SSH access)

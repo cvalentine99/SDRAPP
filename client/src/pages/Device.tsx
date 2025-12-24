@@ -34,6 +34,7 @@ export default function Device() {
   // Fetch current device config
   const { data: deviceConfig } = trpc.device.getConfig.useQuery();
   const { data: deviceStatus } = trpc.device.getStatus.useQuery();
+  const { data: deviceInfo } = trpc.device.getInfo.useQuery();
   
   // Mutations
   const setFrequencyMutation = trpc.device.setFrequency.useMutation({
@@ -122,25 +123,25 @@ export default function Device() {
                 <div className="bg-black/50 rounded p-3 border border-border">
                   <div className="text-xs text-muted-foreground">Serial Number</div>
                   <div className="text-sm font-mono text-primary">
-                    194919
+                    {deviceInfo?.serial || "--"}
                   </div>
                 </div>
                 <div className="bg-black/50 rounded p-3 border border-border">
                   <div className="text-xs text-muted-foreground">Device Name</div>
                   <div className="text-sm font-mono text-secondary">
-                    MyB210
+                    {deviceInfo?.name || "--"}
                   </div>
                 </div>
                 <div className="bg-black/50 rounded p-3 border border-border">
                   <div className="text-xs text-muted-foreground">FW / FPGA</div>
                   <div className="text-sm font-mono text-primary">
-                    8.0 / 16.0
+                    {deviceInfo?.firmwareVersion || "--"} / {deviceInfo?.fpgaVersion || "--"}
                   </div>
                 </div>
                 <div className="bg-black/50 rounded p-3 border border-border">
                   <div className="text-xs text-muted-foreground">GPSDO</div>
                   <div className="text-sm font-mono text-secondary">
-                    GPSTCXO v3.2
+                    {deviceInfo?.gpsdo || "--"}
                   </div>
                 </div>
               </div>

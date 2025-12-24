@@ -29,6 +29,7 @@ export function SDRLayout({ children }: SDRLayoutProps) {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation();
+  const { data: deviceInfo } = trpc.device.getInfo.useQuery();
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
@@ -146,13 +147,13 @@ export function SDRLayout({ children }: SDRLayoutProps) {
               <span className="text-secondary">USB 3.0</span> CONNECTED
             </div>
             <div className="text-muted-foreground">
-              <span className="text-secondary">MyB210</span> [SN: 194919]
+              <span className="text-secondary">{deviceInfo?.name || "--"}</span> [SN: {deviceInfo?.serial || "--"}]
             </div>
             <div className="text-muted-foreground">
-              FW: <span className="text-primary">8.0</span> | FPGA: <span className="text-primary">16.0</span>
+              FW: <span className="text-primary">{deviceInfo?.firmwareVersion || "--"}</span> | FPGA: <span className="text-primary">{deviceInfo?.fpgaVersion || "--"}</span>
             </div>
             <div className="text-muted-foreground">
-              GPSDO: <span className="text-secondary">GPSTCXO v3.2</span>
+              GPSDO: <span className="text-secondary">{deviceInfo?.gpsdo || "--"}</span>
             </div>
           </div>
           <div className="text-muted-foreground">

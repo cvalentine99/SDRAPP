@@ -21,10 +21,14 @@
 From your local machine:
 
 ```bash
-# Option A: Direct SCP transfer
+# Option A: Automated deployment script (recommended)
+cd hardware/
+./deploy_to_gx10.sh ubuntu gx10-alpha 22 ~/ettus-sdr-hardware
+
+# Option B: Manual SCP transfer
 scp hardware-deployment-gx10-alpha.tar.gz user@gx10-alpha:~/
 
-# Option B: Upload to cloud and download on server
+# Option C: Upload to cloud and download on server
 # (if direct SCP is blocked by firewall)
 ```
 
@@ -87,6 +91,11 @@ Device Address:
 ### 6. Compile C++ Daemons (2-5 minutes)
 
 ```bash
+# Option A: Remote compilation via script (from local machine)
+cd hardware/
+./remote_compile.sh ubuntu gx10-alpha 22 ~/ettus-sdr-hardware
+
+# Option B: Manual compilation (on gx10-alpha)
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
