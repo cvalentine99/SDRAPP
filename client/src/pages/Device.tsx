@@ -83,7 +83,7 @@ export default function Device() {
                     Frequency Range
                   </div>
                   <div className="text-sm font-mono text-secondary">
-                    70 MHz - 6 GHz
+                    50 MHz - 6 GHz
                   </div>
                 </div>
                 <div className="bg-black/50 rounded p-3 border border-border">
@@ -91,7 +91,35 @@ export default function Device() {
                     Max Sample Rate
                   </div>
                   <div className="text-sm font-mono text-primary">
-                    56 MSPS
+                    61.44 MSPS
+                  </div>
+                </div>
+              </div>
+              
+              {/* Device Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                <div className="bg-black/50 rounded p-3 border border-border">
+                  <div className="text-xs text-muted-foreground">Serial Number</div>
+                  <div className="text-sm font-mono text-primary">
+                    194919
+                  </div>
+                </div>
+                <div className="bg-black/50 rounded p-3 border border-border">
+                  <div className="text-xs text-muted-foreground">Device Name</div>
+                  <div className="text-sm font-mono text-secondary">
+                    MyB210
+                  </div>
+                </div>
+                <div className="bg-black/50 rounded p-3 border border-border">
+                  <div className="text-xs text-muted-foreground">FW / FPGA</div>
+                  <div className="text-sm font-mono text-primary">
+                    8.0 / 16.0
+                  </div>
+                </div>
+                <div className="bg-black/50 rounded p-3 border border-border">
+                  <div className="text-xs text-muted-foreground">GPSDO</div>
+                  <div className="text-sm font-mono text-secondary">
+                    GPSTCXO v3.2
                   </div>
                 </div>
               </div>

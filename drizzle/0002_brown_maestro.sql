@@ -1,0 +1,1 @@
+ALTER TABLE `device_configs` ADD `color_map` varchar(100) DEFAULT 'Cyberpunk (Default)';

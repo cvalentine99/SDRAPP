@@ -122,3 +122,20 @@
 - [ ] Loading states for all async operations
 - [ ] Error messages with recovery suggestions
 - [ ] Empty states for data displays
+
+
+## Dashboard Device Info Accuracy (Dec 24, 2025)
+
+- [x] Review current Spectrum page dashboard device info display
+- [x] Check Device tab for accurate device info source
+- [x] Update dashboard to show real B210 device info:
+  - [x] Serial number (194919)
+  - [x] Device name (MyB210)
+  - [x] FW Version (8.0)
+  - [x] FPGA Version (16.0)
+  - [x] GPSDO status (GPSTCXO v3.2)
+  - [x] USB connection (USB 3.0)
+- [x] Display in footer status bar on all pages
+- [x] Add device info panel to Device tab
+- [x] Update frequency range (50 MHz - 6 GHz)
+- [x] Update max sample rate (61.44 MSPS)

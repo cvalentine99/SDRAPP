@@ -143,6 +143,15 @@ export function SDRLayout({ children }: SDRLayoutProps) {
             <div className="text-muted-foreground">
               <span className="text-secondary">USB 3.0</span> CONNECTED
             </div>
+            <div className="text-muted-foreground">
+              <span className="text-secondary">MyB210</span> [SN: 194919]
+            </div>
+            <div className="text-muted-foreground">
+              FW: <span className="text-primary">8.0</span> | FPGA: <span className="text-primary">16.0</span>
+            </div>
+            <div className="text-muted-foreground">
+              GPSDO: <span className="text-secondary">GPSTCXO v3.2</span>
+            </div>
           </div>
           <div className="text-muted-foreground">
             © 2025 ETTUS RESEARCH | B210 USRP
