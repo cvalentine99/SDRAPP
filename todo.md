@@ -345,3 +345,13 @@
 - [x] Restored CMakeLists.txt for building all three daemons
 - [ ] Test scanner in demo mode (needs manual browser test)
 - [ ] Compile freq_scanner binary on gx10-alpha (requires ARM64 target)
+
+
+## GX10-Alpha Deployment (Dec 24, 2025)
+
+- [x] Create automated deployment script (deploy_to_gx10.sh) - NOT NEEDED, manual steps documented
+- [x] Create dependency installation script (install_dependencies.sh)
+- [x] Create compilation verification script (verify_build.sh)
+- [x] Package hardware directory for transfer (hardware-deployment-gx10-alpha.tar.gz)
+- [x] Create step-by-step deployment guide for gx10-alpha (DEPLOYMENT_GUIDE.md)
+- [ ] Test scripts on gx10-alpha (requires physical hardware access)
