@@ -20,6 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { GlobalAIChat } from "./GlobalAIChat";
 
 interface SDRLayoutProps {
   children: React.ReactNode;
@@ -42,8 +43,9 @@ export function SDRLayout({ children }: SDRLayoutProps) {
     { path: "/device", label: "Device", icon: Radio },
     { path: "/recording", label: "Recording", icon: Database },
     { path: "/telemetry", label: "Telemetry", icon: Activity },
-    { path: "/ai-assistant", label: "AI Assistant", icon: Zap },
+    { path: "/settings", label: "Settings", icon: Settings },
   ];
+  // AI Assistant is now a global floating chat box (lower right corner)
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -161,6 +163,9 @@ export function SDRLayout({ children }: SDRLayoutProps) {
           </div>
         </div>
       </footer>
+
+      {/* Global AI Chat Box */}
+      <GlobalAIChat />
     </div>
   );
 }

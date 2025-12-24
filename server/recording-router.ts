@@ -3,6 +3,10 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { recordings } from "../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { spawn } from "child_process";
+import { storagePut } from "./storage";
+import fs from "fs/promises";
+import path from "path";
 
 const db = drizzle(process.env.DATABASE_URL || "");
 
@@ -23,22 +27,101 @@ export const recordingRouter = router({
       frequency: z.number(),
       sampleRate: z.number(),
       duration: z.number(),
-      gain: z.number().optional(),
+      gain: z.number().optional().default(40),
     }))
     .mutation(async ({ input, ctx }) => {
+      const sdrMode = process.env.SDR_MODE || "demo";
+      const timestamp = Date.now();
+      const filename = `recording_${timestamp}`;
+      const tmpPath = `/tmp/${filename}.sigmf-data`;
+      const tmpMetaPath = `/tmp/${filename}.sigmf-meta`;
+
       try {
+        if (sdrMode === "demo") {
+          // Demo mode: create fake recording
+          const fileSize = Math.floor(input.duration * input.sampleRate * 8);
+          await db.insert(recordings).values({
+            userId: ctx.user.id,
+            frequency: input.frequency,
+            sampleRate: input.sampleRate,
+            duration: input.duration,
+            filePath: `https://demo.s3.amazonaws.com/recordings/${filename}.sigmf-data`,
+            fileSize,
+          });
+          
+          return { success: true };
+        }
+
+        // Production mode: spawn iq_recorder binary
+        const recorderPath = process.env.IQ_RECORDER_PATH || "/usr/local/bin/iq_recorder";
+        
+        await new Promise<void>((resolve, reject) => {
+          const recorder = spawn(recorderPath, [
+            "--freq", input.frequency.toString(),
+            "--rate", input.sampleRate.toString(),
+            "--gain", input.gain.toString(),
+            "--duration", input.duration.toString(),
+            "--output", tmpPath,
+          ]);
+
+          let errorOutput = "";
+
+          recorder.stderr.on("data", (data) => {
+            errorOutput += data.toString();
+            console.log("[iq_recorder]", data.toString());
+          });
+
+          recorder.on("close", (code) => {
+            if (code !== 0) {
+              reject(new Error(`iq_recorder failed: ${errorOutput}`));
+            } else {
+              resolve();
+            }
+          });
+
+          recorder.on("error", (error) => {
+            reject(new Error(`Failed to spawn iq_recorder: ${error.message}`));
+          });
+        });
+
+        // Upload IQ data file to S3
+        const dataBuffer = await fs.readFile(tmpPath);
+        const s3Key = `recordings/${ctx.user.id}/${filename}.sigmf-data`;
+        const { url: dataUrl } = await storagePut(s3Key, dataBuffer, "application/octet-stream");
+
+        // Upload SigMF metadata file to S3
+        let metaUrl = "";
+        try {
+          const metaBuffer = await fs.readFile(tmpMetaPath);
+          const metaKey = `recordings/${ctx.user.id}/${filename}.sigmf-meta`;
+          const result = await storagePut(metaKey, metaBuffer, "application/json");
+          metaUrl = result.url;
+        } catch (error) {
+          console.warn("No SigMF metadata file found, skipping upload");
+        }
+
+        // Clean up temp files
+        await fs.unlink(tmpPath).catch(() => {});
+        await fs.unlink(tmpMetaPath).catch(() => {});
+
+        // Save recording metadata to database
+        const fileSize = dataBuffer.length;
         await db.insert(recordings).values({
           userId: ctx.user.id,
           frequency: input.frequency,
           sampleRate: input.sampleRate,
           duration: input.duration,
-          filePath: `/recordings/demo_${Date.now()}.iq`,
-          fileSize: Math.floor(input.duration * input.sampleRate * 8),
+          filePath: dataUrl,
+          fileSize,
         });
-        return { success: true };
+
+        return { success: true, dataUrl, metaUrl };
       } catch (error) {
         console.error("Failed to start recording:", error);
-        throw new Error("Failed to start recording");
+        // Clean up temp files on error
+        await fs.unlink(tmpPath).catch(() => {});
+        await fs.unlink(tmpMetaPath).catch(() => {});
+        throw new Error(`Failed to start recording: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }),
 

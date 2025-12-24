@@ -10,7 +10,8 @@ import Scanner from "./pages/Scanner";
 import Device from "./pages/Device";
 import Recording from "./pages/Recording";
 import Telemetry from "./pages/Telemetry";
-import AIAssistant from "./pages/AIAssistant";
+// AIAssistant page removed - now using global floating chat box
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
@@ -21,7 +22,8 @@ function Router() {
         <Route path={"/device"} component={Device} />
         <Route path={"/recording"} component={Recording} />
         <Route path={"/telemetry"} component={Telemetry} />
-        <Route path={"/ai-assistant"} component={AIAssistant} />
+        {/* AI Assistant is now a global floating chat box */}
+        <Route path={"/settings"} component={Settings} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
         <Route component={NotFound} />

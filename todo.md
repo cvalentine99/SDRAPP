@@ -386,3 +386,22 @@
 - [x] Prepare post-deployment verification checklist (VERIFICATION_CHECKLIST.md - 13 KB)
 - [x] Create deployment package README (README_DEPLOYMENT.md - 11 KB)
 - [x] Package all resources for user (11 files, 89 KB total)
+
+
+## Frontend-Backend Connection Audit (Dec 24, 2025)
+
+- [x] Map all tRPC routes in server/routers.ts
+- [x] Map all frontend tRPC calls across all pages
+- [x] Identify missing backend procedures
+- [x] Identify missing frontend implementations
+- [x] Fix recording.start to spawn iq_recorder binary
+- [x] Add S3 upload to recording.start (with SigMF metadata)
+- [x] Create Settings page with SDR_MODE toggle
+- [x] Create settings router (getMode, setMode)
+- [x] Add Settings to navigation
+- [x] Create AI router with LLM integration
+- [x] Add RAG for signal forensics context (comprehensive knowledge base)
+- [x] Convert AI Assistant to global floating chat box (lower right)
+- [x] Wire up AI chat box on all pages (added to SDRLayout)
+- [x] Remove AI Assistant page from navigation (now global)
+- [x] Test all connections end-to-end (22 tests passing)
