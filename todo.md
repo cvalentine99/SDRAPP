@@ -405,3 +405,17 @@
 - [x] Wire up AI chat box on all pages (added to SDRLayout)
 - [x] Remove AI Assistant page from navigation (now global)
 - [x] Test all connections end-to-end (22 tests passing)
+
+
+## AI Assistant Enhancement - Proactive Analysis (Dec 24, 2025)
+
+- [x] Add ai.analyzeSpectrum endpoint to detect signal characteristics
+- [x] Create frequency-based signal identification logic (13 signal types)
+- [x] Generate contextual forensic question suggestions (4 per signal type)
+- [x] Update GlobalAIChat to show suggested questions on open
+- [x] Display detected signal types with confidence scores
+- [x] Show current SDR status (temp, GPS lock, PLL lock)
+- [x] Add manual refresh button to re-analyze spectrum
+- [ ] Add auto-refresh when user changes frequency (future: requires event system)
+- [x] Test with various frequency ranges (16 tests passing)
+- [x] All 38 tests passing (22 gap-fixes + 16 AI analysis)

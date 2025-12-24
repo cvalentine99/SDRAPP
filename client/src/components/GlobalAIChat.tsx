@@ -12,6 +12,7 @@ import {
   Sparkles,
   X,
   User,
+  RefreshCw,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
@@ -25,16 +26,33 @@ interface Message {
 export function GlobalAIChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content:
-        "👋 Hello! I'm your RF signal intelligence assistant. I can help you:\n\n• Identify signals (WiFi, Bluetooth, LTE, GPS, etc.)\n• Recommend SDR settings for specific signals\n• Troubleshoot spectrum analysis issues\n• Explain modulation schemes\n• Provide measurement guidance\n\nWhat would you like to know?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch spectrum analysis when chat opens
+  const { data: spectrumAnalysis, refetch: refetchAnalysis } =
+    trpc.ai.analyzeSpectrum.useQuery(undefined, {
+      enabled: isOpen,
+      refetchOnWindowFocus: false,
+    });
+
+  // Initialize welcome message with spectrum analysis
+  useEffect(() => {
+    if (isOpen && spectrumAnalysis && messages.length === 0) {
+      const welcomeMessage = `👋 Hello! I'm analyzing your current spectrum...\n\n**Signal Detected:** ${spectrumAnalysis.signalType}\n${spectrumAnalysis.description}\n\n**Current Settings:**\n• Frequency: ${(spectrumAnalysis.frequency / 1e6).toFixed(3)} MHz\n• Sample Rate: ${(spectrumAnalysis.sampleRate / 1e6).toFixed(2)} MSPS\n• Gain: ${spectrumAnalysis.gain} dB\n\n${spectrumAnalysis.insights.join("\n")}\n\n**Try asking me:**`;
+
+      setMessages([
+        {
+          role: "assistant",
+          content: welcomeMessage,
+          timestamp: new Date(),
+        },
+      ]);
+      setSuggestedQuestions(spectrumAnalysis.suggestedQuestions);
+    }
+  }, [isOpen, spectrumAnalysis, messages.length]);
 
   const chatMutation = trpc.ai.chat.useMutation({
     onSuccess: (response) => {
@@ -67,17 +85,19 @@ export function GlobalAIChat() {
     }
   }, [messages]);
 
-  const handleSend = () => {
-    if (!inputValue.trim() || chatMutation.isPending) return;
+  const handleSend = (question?: string) => {
+    const messageContent = question || inputValue.trim();
+    if (!messageContent || chatMutation.isPending) return;
 
     const userMessage: Message = {
       role: "user",
-      content: inputValue,
+      content: messageContent,
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
+    setSuggestedQuestions([]); // Clear suggestions after first question
 
     // Call AI backend
     chatMutation.mutate({
@@ -152,11 +172,25 @@ export function GlobalAIChat() {
           <div>
             <h3 className="font-semibold text-sm">RF Signal Assistant</h3>
             <p className="text-xs text-muted-foreground">
-              Powered by AI • {messages.length} messages
+              {spectrumAnalysis
+                ? `${spectrumAnalysis.signalType} • ${(spectrumAnalysis.frequency / 1e6).toFixed(1)} MHz`
+                : "Analyzing..."}
             </p>
           </div>
         </div>
         <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              refetchAnalysis();
+              toast.success("Spectrum re-analyzed");
+            }}
+            title="Refresh analysis"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -246,6 +280,29 @@ export function GlobalAIChat() {
 
       <Separator />
 
+      {/* Suggested Questions */}
+      {suggestedQuestions.length > 0 && (
+        <div className="p-4 bg-muted/30 border-t">
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            💡 Suggested questions:
+          </p>
+          <div className="space-y-1">
+            {suggestedQuestions.map((question, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                onClick={() => handleSend(question)}
+                className="w-full text-left text-xs justify-start h-auto py-2 px-3 font-normal"
+                disabled={chatMutation.isPending}
+              >
+                {question}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4">
         <div className="flex gap-2">
@@ -258,7 +315,7 @@ export function GlobalAIChat() {
             className="flex-1"
           />
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!inputValue.trim() || chatMutation.isPending}
             size="icon"
           >

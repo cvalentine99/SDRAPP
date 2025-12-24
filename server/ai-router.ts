@@ -179,6 +179,209 @@ You are an RF signal intelligence assistant for an Ettus B210 SDR system. You he
 Always provide specific, actionable recommendations with exact frequencies, sample rates, and gain settings.
 `;
 
+// Signal identification based on frequency
+function identifySignalType(frequency: number): {
+  type: string;
+  description: string;
+  confidence: number;
+  suggestedQuestions: string[];
+} {
+  const freq = frequency / 1e6; // Convert to MHz
+
+  // WiFi 2.4 GHz
+  if (freq >= 2400 && freq <= 2500) {
+    return {
+      type: "WiFi 2.4 GHz",
+      description: "IEEE 802.11 b/g/n/ax wireless network",
+      confidence: 0.9,
+      suggestedQuestions: [
+        "What WiFi channels are active in this spectrum?",
+        "How can I identify different WiFi access points?",
+        "What's causing interference in the 2.4 GHz band?",
+        "Recommended settings for WiFi packet capture?",
+      ],
+    };
+  }
+
+  // WiFi 5 GHz
+  if (freq >= 5150 && freq <= 5850) {
+    return {
+      type: "WiFi 5 GHz",
+      description: "IEEE 802.11 a/n/ac/ax wireless network",
+      confidence: 0.9,
+      suggestedQuestions: [
+        "Which 5 GHz WiFi channels are in use?",
+        "How to analyze WiFi 6 (802.11ax) signals?",
+        "What's the difference between 20/40/80/160 MHz channels?",
+        "Best sample rate for 5 GHz WiFi analysis?",
+      ],
+    };
+  }
+
+  // Bluetooth
+  if (freq >= 2402 && freq <= 2480) {
+    return {
+      type: "Bluetooth",
+      description: "Bluetooth Classic or BLE frequency hopping",
+      confidence: 0.85,
+      suggestedQuestions: [
+        "How to detect Bluetooth frequency hopping?",
+        "What's the difference between Bluetooth Classic and BLE?",
+        "How many Bluetooth devices are nearby?",
+        "Recommended settings for Bluetooth capture?",
+      ],
+    };
+  }
+
+  // FM Radio
+  if (freq >= 88 && freq <= 108) {
+    return {
+      type: "FM Radio",
+      description: "Commercial FM broadcast band",
+      confidence: 0.95,
+      suggestedQuestions: [
+        "Which FM stations are strongest in my area?",
+        "How to demodulate FM radio signals?",
+        "What's the stereo pilot tone at 19 kHz?",
+        "How to identify RDS (Radio Data System) signals?",
+      ],
+    };
+  }
+
+  // GPS L1
+  if (freq >= 1574 && freq <= 1577) {
+    return {
+      type: "GPS L1",
+      description: "GPS L1 C/A code (civilian)",
+      confidence: 0.9,
+      suggestedQuestions: [
+        "Why is GPS signal so weak (-130 dBm)?",
+        "How to acquire GPS satellites?",
+        "What gain setting is needed for GPS?",
+        "How to decode GPS navigation messages?",
+      ],
+    };
+  }
+
+  // LTE Band 2 (1900 MHz)
+  if (freq >= 1850 && freq <= 1990) {
+    return {
+      type: "LTE Band 2",
+      description: "4G LTE cellular (PCS band)",
+      confidence: 0.8,
+      suggestedQuestions: [
+        "How to identify LTE cell towers?",
+        "What's the bandwidth of this LTE signal?",
+        "How to decode LTE reference signals?",
+        "Recommended settings for LTE analysis?",
+      ],
+    };
+  }
+
+  // LTE Band 4 (AWS)
+  if (freq >= 1710 && freq <= 2155) {
+    return {
+      type: "LTE Band 4",
+      description: "4G LTE cellular (AWS band)",
+      confidence: 0.8,
+      suggestedQuestions: [
+        "How many LTE carriers are active?",
+        "What modulation is used in LTE downlink?",
+        "How to measure LTE signal quality?",
+        "What's the difference between FDD and TDD LTE?",
+      ],
+    };
+  }
+
+  // 5G n78 (3.5 GHz)
+  if (freq >= 3300 && freq <= 3800) {
+    return {
+      type: "5G NR n78",
+      description: "5G New Radio (mid-band)",
+      confidence: 0.85,
+      suggestedQuestions: [
+        "How to identify 5G NR signals?",
+        "What's the SSB (Synchronization Signal Block)?",
+        "How wide are 5G channels?",
+        "Recommended sample rate for 5G analysis?",
+      ],
+    };
+  }
+
+  // ISM 915 MHz
+  if (freq >= 902 && freq <= 928) {
+    return {
+      type: "ISM 915 MHz",
+      description: "Industrial, Scientific, Medical band (LoRa, Zigbee, etc.)",
+      confidence: 0.7,
+      suggestedQuestions: [
+        "What devices use the 915 MHz ISM band?",
+        "How to identify LoRa chirp signals?",
+        "What's the difference between LoRa and Zigbee?",
+        "How to analyze IoT device communications?",
+      ],
+    };
+  }
+
+  // ISM 433 MHz
+  if (freq >= 433 && freq <= 435) {
+    return {
+      type: "ISM 433 MHz",
+      description: "ISM band (remote controls, sensors)",
+      confidence: 0.75,
+      suggestedQuestions: [
+        "What devices transmit at 433 MHz?",
+        "How to decode remote control signals?",
+        "What modulation is used for car key fobs?",
+        "How to identify weather station transmissions?",
+      ],
+    };
+  }
+
+  // Amateur Radio 2m (VHF)
+  if (freq >= 144 && freq <= 148) {
+    return {
+      type: "Amateur Radio 2m",
+      description: "Ham radio VHF band",
+      confidence: 0.8,
+      suggestedQuestions: [
+        "What ham radio modes are used on 2 meters?",
+        "How to decode APRS packets?",
+        "What's the calling frequency for 2m FM?",
+        "How to identify digital modes like FT8?",
+      ],
+    };
+  }
+
+  // Amateur Radio 70cm (UHF)
+  if (freq >= 420 && freq <= 450) {
+    return {
+      type: "Amateur Radio 70cm",
+      description: "Ham radio UHF band",
+      confidence: 0.8,
+      suggestedQuestions: [
+        "What's the difference between 2m and 70cm bands?",
+        "How to find repeater frequencies?",
+        "What digital modes are popular on 70cm?",
+        "How to decode DMR or D-STAR signals?",
+      ],
+    };
+  }
+
+  // Default - unknown signal
+  return {
+    type: "Unknown Signal",
+    description: `Signal at ${freq.toFixed(2)} MHz - analysis needed`,
+    confidence: 0.3,
+    suggestedQuestions: [
+      "What frequency range should I scan?",
+      "How to identify unknown signals?",
+      "What are common signal types in this band?",
+      "Recommended settings for signal discovery?",
+    ],
+  };
+}
+
 export const aiRouter = router({
   chat: publicProcedure
     .input(
@@ -229,4 +432,55 @@ export const aiRouter = router({
         );
       }
     }),
+
+  analyzeSpectrum: publicProcedure.query(async () => {
+    try {
+      // Get current SDR configuration
+      const config = hardware.getConfig();
+      const status = hardware.getStatus();
+
+      // Identify signal type based on frequency
+      const signalAnalysis = identifySignalType(config.frequency);
+
+      // Generate contextual insights
+      const insights = [
+        `Currently tuned to ${(config.frequency / 1e6).toFixed(3)} MHz`,
+        `Sample rate: ${(config.sampleRate / 1e6).toFixed(2)} MSPS`,
+        `Gain: ${config.gain} dB`,
+      ];
+
+      if (status.temperature > 60) {
+        insights.push("⚠️ High temperature detected - consider cooling");
+      }
+
+      if (!status.gpsLock) {
+        insights.push("📡 No GPS lock - frequency accuracy may be reduced");
+      }
+
+      if (!status.pllLock) {
+        insights.push("⚠️ PLL not locked - check hardware connection");
+      }
+
+      return {
+        frequency: config.frequency,
+        sampleRate: config.sampleRate,
+        gain: config.gain,
+        signalType: signalAnalysis.type,
+        description: signalAnalysis.description,
+        confidence: signalAnalysis.confidence,
+        suggestedQuestions: signalAnalysis.suggestedQuestions,
+        insights,
+        status: {
+          temperature: status.temperature,
+          gpsLock: status.gpsLock,
+          pllLock: status.pllLock,
+        },
+      };
+    } catch (error) {
+      console.error("Spectrum analysis error:", error);
+      throw new Error(
+        `Failed to analyze spectrum: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }),
 });
