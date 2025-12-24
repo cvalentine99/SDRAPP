@@ -257,3 +257,14 @@
 - [x] Replace hardcoded values with real temperature and USB bandwidth
 - [x] Add fallback "--" for loading state
 - [ ] Test live telemetry updates (needs manual testing)
+
+
+## Bare Metal Deployment Package (Dec 24, 2025)
+
+- [x] Create system architecture diagram (Mermaid) - docs/ARCHITECTURE.md
+- [x] Create data flow diagram - docs/ARCHITECTURE.md
+- [x] Create automated installation script (install.sh)
+- [x] Create deployment package README (DEPLOYMENT_README.md)
+- [x] Create pre-deployment checklist (included in README)
+- [x] Package all files into deployment archive (ettus-sdr-web-deployment-20251224.tar.gz)
+- [ ] Test installation script on gx10-alpha (requires hardware access)
