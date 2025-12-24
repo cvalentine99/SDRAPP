@@ -248,3 +248,12 @@
 - [x] Update button text and icon based on state (Play/START ↔ Pause/STOP)
 - [ ] Test frequency tuning from Spectrum page (needs manual testing)
 - [ ] Test gain control from Spectrum page (needs manual testing)
+
+
+## Live Telemetry in Spectrum Page (Dec 24, 2025)
+
+- [x] Add trpc.telemetry.getMetrics query to Spectrum page
+- [x] Set 1-second auto-refresh interval
+- [x] Replace hardcoded values with real temperature and USB bandwidth
+- [x] Add fallback "--" for loading state
+- [ ] Test live telemetry updates (needs manual testing)

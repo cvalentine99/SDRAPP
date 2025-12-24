@@ -22,6 +22,11 @@ export default function Spectrum() {
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
   
+  // Fetch live telemetry
+  const { data: telemetry } = trpc.telemetry.getMetrics.useQuery(undefined, {
+    refetchInterval: 1000, // Refresh every second
+  });
+  
   // Mutations
   const setFrequencyMutation = trpc.device.setFrequency.useMutation({
     onSuccess: () => console.log("Frequency updated to", frequency, "MHz"),
@@ -232,12 +237,12 @@ export default function Spectrum() {
 
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-black/50 rounded p-2 border border-border">
-                <div className="text-muted-foreground">FFT Rate</div>
-                <div className="text-secondary font-mono">60 FPS</div>
+                <div className="text-muted-foreground">Temperature</div>
+                <div className="text-secondary font-mono">{telemetry?.temperature.toFixed(1) || "--"}°C</div>
               </div>
               <div className="bg-black/50 rounded p-2 border border-border">
-                <div className="text-muted-foreground">Throughput</div>
-                <div className="text-primary font-mono">123 KB/s</div>
+                <div className="text-muted-foreground">USB Bandwidth</div>
+                <div className="text-primary font-mono">{telemetry?.usbBandwidth.toFixed(1) || "--"} MB/s</div>
               </div>
             </div>
           </CardContent>
