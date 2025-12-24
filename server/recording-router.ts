@@ -6,7 +6,16 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { spawn } from "child_process";
 import { storagePut } from "./storage";
 import fs from "fs/promises";
-import path from "path";
+import { recordingParamsSchema } from "../shared/validation";
+import {
+  isProductionMode,
+  calculateRecordingSize,
+} from "./utils/hardware-utils";
+import {
+  createSDRError,
+  SDRErrorCode,
+  logError,
+} from "./utils/error-utils";
 
 const db = drizzle(process.env.DATABASE_URL || "");
 
@@ -22,24 +31,21 @@ export const recordingRouter = router({
     }
   }),
 
-  start: protectedProcedure
-    .input(z.object({
-      frequency: z.number(),
-      sampleRate: z.number(),
-      duration: z.number(),
-      gain: z.number().optional().default(40),
-    }))
+  start: protectedProcedure.input(recordingParamsSchema)
     .mutation(async ({ input, ctx }) => {
-      const sdrMode = process.env.SDR_MODE || "demo";
+      const isProduction = isProductionMode();
       const timestamp = Date.now();
       const filename = `recording_${timestamp}`;
       const tmpPath = `/tmp/${filename}.sigmf-data`;
       const tmpMetaPath = `/tmp/${filename}.sigmf-meta`;
 
       try {
-        if (sdrMode === "demo") {
+        if (!isProduction) {
           // Demo mode: create fake recording
-          const fileSize = Math.floor(input.duration * input.sampleRate * 8);
+          const fileSize = calculateRecordingSize(
+            input.sampleRate,
+            input.duration
+          );
           await db.insert(recordings).values({
             userId: ctx.user.id,
             frequency: input.frequency,
@@ -117,11 +123,20 @@ export const recordingRouter = router({
 
         return { success: true, dataUrl, metaUrl };
       } catch (error) {
-        console.error("Failed to start recording:", error);
+        logError("Recording", error, {
+          frequency: input.frequency,
+          sampleRate: input.sampleRate,
+          duration: input.duration,
+          mode: isProduction ? "production" : "demo",
+        });
         // Clean up temp files on error
         await fs.unlink(tmpPath).catch(() => {});
         await fs.unlink(tmpMetaPath).catch(() => {});
-        throw new Error(`Failed to start recording: ${error instanceof Error ? error.message : "Unknown error"}`);
+        throw createSDRError(
+          SDRErrorCode.RECORDING_FAILED,
+          "Failed to start recording",
+          error
+        );
       }
     }),
 

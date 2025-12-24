@@ -419,3 +419,38 @@
 - [ ] Add auto-refresh when user changes frequency (future: requires event system)
 - [x] Test with various frequency ranges (16 tests passing)
 - [x] All 38 tests passing (22 gap-fixes + 16 AI analysis)
+
+
+## Code Refactoring (Dec 24, 2025)
+
+### Backend Refactoring
+- [x] Audit all routers for duplicate logic
+- [x] Extract common hardware interaction patterns (hardware-utils.ts)
+- [x] Consolidate error handling across routers (error-utils.ts)
+- [x] Improve input validation consistency (shared/validation.ts)
+- [x] Create shared utility functions for frequency/sample rate conversions
+- [x] Standardize response formats with error codes
+- [x] Refactor recording router to use new utilities
+
+### Frontend Refactoring
+- [x] Audit components for duplicate code
+- [x] Extract shared hooks (useSDRControls with validation)
+- [x] Consolidate form validation logic (in useSDRControls)
+- [x] Improve component composition and reusability
+- [x] Standardize error display patterns (ErrorDisplay component)
+- [x] Extract common UI patterns into shared components (LoadingSkeleton)
+
+### Type Safety & Error Handling
+- [x] Add comprehensive TypeScript types for all APIs (shared/sdr-types.ts)
+- [x] Improve error messages with actionable guidance (error-utils.ts)
+- [x] Add loading states consistently across all pages (LoadingSkeleton)
+- [x] Standardize error display (ErrorDisplay component)
+- [x] Add input validation feedback (useSDRControls hook)
+- [ ] Implement React error boundaries (future enhancement)
+
+### Code Quality
+- [x] Remove unused imports and dead code
+- [x] Improve naming consistency
+- [x] Add JSDoc comments for complex functions (hardware-utils, error-utils, hooks)
+- [x] Ensure consistent code formatting
+- [x] Test all refactored code (38 tests passing)
