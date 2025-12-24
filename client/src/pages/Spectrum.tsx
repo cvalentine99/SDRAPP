@@ -250,6 +250,43 @@ export default function Spectrum() {
               )}
             </Button>
 
+            {/* WebSocket Connection Status */}
+            <div className="bg-black/50 rounded p-2 border border-border">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs text-muted-foreground">WebSocket</div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === "connected" ? "bg-green-500 animate-pulse" :
+                    connectionStatus === "connecting" ? "bg-yellow-500 animate-pulse" :
+                    connectionStatus === "reconnecting" ? "bg-orange-500 animate-pulse" :
+                    "bg-red-500"
+                  }`} />
+                  <span className={`text-xs font-mono ${
+                    connectionStatus === "connected" ? "text-green-500" :
+                    connectionStatus === "connecting" ? "text-yellow-500" :
+                    connectionStatus === "reconnecting" ? "text-orange-500" :
+                    "text-red-500"
+                  }`}>
+                    {connectionStatus.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">FFT Stream FPS</span>
+                <span className="text-xs font-mono text-secondary">{wsFps} FPS</span>
+              </div>
+              {!isConnected && (
+                <Button
+                  onClick={reconnect}
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2 text-xs border-primary hover:box-glow-pink"
+                >
+                  Reconnect
+                </Button>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-black/50 rounded p-2 border border-border">
                 <div className="text-muted-foreground">Temperature</div>
