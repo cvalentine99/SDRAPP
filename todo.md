@@ -332,3 +332,16 @@
 ### Audit Report
 - [x] Created AUDIT_REPORT.md with detailed findings
 - [x] Status: PRODUCTION READY with minor stubs for advanced features
+
+
+## Scanner Production Mode (Dec 24, 2025)
+
+- [x] Update scanner-router.ts to check SDR_MODE environment variable (ALREADY IMPLEMENTED)
+- [x] Implement demo mode with simulated scan results (peaks at 915/925 MHz)
+- [x] Implement production mode with freq_scanner binary spawning
+- [x] Parse JSON output from freq_scanner
+- [x] Handle freq_scanner errors and timeouts
+- [x] Restored freq_scanner.cpp, sdr_streamer.cpp, iq_recorder.cpp from git history
+- [x] Restored CMakeLists.txt for building all three daemons
+- [ ] Test scanner in demo mode (needs manual browser test)
+- [ ] Compile freq_scanner binary on gx10-alpha (requires ARM64 target)
