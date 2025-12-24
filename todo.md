@@ -283,3 +283,20 @@
 - [x] Server logs show WebSocket clients connecting successfully
 - [ ] Test 60 FPS streaming performance in browser (needs manual testing)
 - [ ] Test demo and production modes (needs manual testing)
+
+
+## Final Integration (Dec 24, 2025)
+
+- [ ] Test live visualization in browser
+  - [ ] Verify waterfall scrolls with real-time FFT data
+  - [ ] Check FPS counter shows ~60 FPS
+  - [ ] Test START/STOP button pauses/resumes display
+- [ ] Add connection status UI to Acquisition panel
+  - [ ] Display WebSocket connection status with colored indicator
+  - [ ] Show reconnect button when disconnected
+- [ ] Wire production mode
+  - [ ] Create ProductionHardwareManager class
+  - [ ] Spawn sdr_streamer C++ daemon
+  - [ ] Parse JSON stdout from sdr_streamer
+  - [ ] Emit real FFT events from B210 hardware
+  - [ ] Update hardware manager factory to support production mode
