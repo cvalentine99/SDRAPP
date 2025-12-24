@@ -1,0 +1,559 @@
+/**
+ * binary-hardware-manager.ts.example
+ *
+ * Enhanced hardware manager with:
+ * 1. Binary FFT protocol parsing
+ * 2. Control socket for real-time parameter changes
+ * 3. Zero-restart frequency/gain adjustments
+ *
+ * This example demonstrates the recommended P0 improvements
+ * from the C++ backend review.
+ */
+
+import { EventEmitter } from "events";
+import { spawn, ChildProcess } from "child_process";
+import * as net from "net";
+import path from "path";
+
+// ============================================================================
+// Binary Protocol Types
+// ============================================================================
+
+// Matches C++ BinaryFFTHeader (44 bytes)
+interface BinaryFFTHeader {
+  magic: number;        // 0x46465431 ("FFT1")
+  frameNumber: number;
+  timestamp: number;
+  centerFreq: number;
+  sampleRate: number;
+  fftSize: number;
+  flags: number;        // Bit 0: GPS locked, Bit 1: Overflow
+  peakBin: number;
+  peakPower: number;
+}
+
+// Matches C++ BinaryStatusFrame (56 bytes)
+interface BinaryStatusFrame {
+  magic: number;        // 0x53545431 ("STT1")
+  frameCount: number;
+  rxTemp: number;
+  txTemp: number;
+  gpsLocked: boolean;
+  pllLocked: boolean;
+  gpsServo: number;
+  gpsTime: string;
+}
+
+interface FFTData {
+  timestamp: number;
+  centerFreq: number;
+  sampleRate: number;
+  fftSize: number;
+  fftData: number[];  // Float32 spectrum values in dBFS
+  peakBin: number;
+  peakPower: number;
+  gpsLocked: boolean;
+}
+
+export interface HardwareConfig {
+  frequency: number;
+  sampleRate: number;
+  gain: number;
+  bandwidth?: number;
+}
+
+export interface HardwareStatus {
+  isRunning: boolean;
+  temperature: number;
+  gpsLock: boolean;
+  pllLock: boolean;
+  frameRate: number;
+}
+
+// ============================================================================
+// Control Socket Client
+// ============================================================================
+
+const CONTROL_SOCKET_PATH = "/tmp/sdr_streamer.sock";
+
+enum ControlCommandType {
+  SET_FREQUENCY = 1,
+  SET_SAMPLE_RATE = 2,
+  SET_GAIN = 3,
+  SET_BANDWIDTH = 4,
+  GET_STATUS = 10,
+  PING = 11,
+  STOP = 255,
+}
+
+interface ControlResponse {
+  success: boolean;
+  actualValue: number;
+  message: string;
+}
+
+class ControlSocketClient {
+  private socket: net.Socket | null = null;
+  private connected = false;
+
+  async connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.socket = net.createConnection(CONTROL_SOCKET_PATH);
+
+      this.socket.on("connect", () => {
+        this.connected = true;
+        console.log("[ControlSocket] Connected to sdr_streamer");
+        resolve();
+      });
+
+      this.socket.on("error", (err) => {
+        this.connected = false;
+        reject(err);
+      });
+
+      this.socket.on("close", () => {
+        this.connected = false;
+        console.log("[ControlSocket] Disconnected");
+      });
+    });
+  }
+
+  disconnect(): void {
+    if (this.socket) {
+      this.socket.destroy();
+      this.socket = null;
+    }
+    this.connected = false;
+  }
+
+  private async sendCommand(type: ControlCommandType, value: number = 0): Promise<ControlResponse> {
+    if (!this.socket || !this.connected) {
+      throw new Error("Control socket not connected");
+    }
+
+    return new Promise((resolve, reject) => {
+      // Build command buffer (9 bytes: 1 byte type + 8 byte double)
+      const cmd = Buffer.alloc(9);
+      cmd.writeUInt8(type, 0);
+      cmd.writeDoubleLE(value, 1);
+
+      // Response buffer (73 bytes: 1 byte success + 8 byte double + 64 byte message)
+      const onData = (data: Buffer) => {
+        this.socket?.removeListener("data", onData);
+
+        if (data.length < 73) {
+          reject(new Error("Invalid response length"));
+          return;
+        }
+
+        resolve({
+          success: data.readUInt8(0) === 1,
+          actualValue: data.readDoubleLE(1),
+          message: data.toString("utf8", 9, 73).replace(/\0+$/, ""),
+        });
+      };
+
+      this.socket!.on("data", onData);
+      this.socket!.write(cmd);
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        this.socket?.removeListener("data", onData);
+        reject(new Error("Command timeout"));
+      }, 5000);
+    });
+  }
+
+  async setFrequency(freq: number): Promise<ControlResponse> {
+    return this.sendCommand(ControlCommandType.SET_FREQUENCY, freq);
+  }
+
+  async setGain(gain: number): Promise<ControlResponse> {
+    return this.sendCommand(ControlCommandType.SET_GAIN, gain);
+  }
+
+  async setSampleRate(rate: number): Promise<ControlResponse> {
+    return this.sendCommand(ControlCommandType.SET_SAMPLE_RATE, rate);
+  }
+
+  async ping(): Promise<ControlResponse> {
+    return this.sendCommand(ControlCommandType.PING);
+  }
+
+  async stop(): Promise<ControlResponse> {
+    return this.sendCommand(ControlCommandType.STOP);
+  }
+
+  isConnected(): boolean {
+    return this.connected;
+  }
+}
+
+// ============================================================================
+// Binary Protocol Parser
+// ============================================================================
+
+class BinaryProtocolParser {
+  private buffer = Buffer.alloc(0);
+
+  // Magic values for frame detection
+  private static readonly FFT_MAGIC = 0x46465431;   // "FFT1"
+  private static readonly STATUS_MAGIC = 0x53545431; // "STT1"
+  private static readonly FFT_HEADER_SIZE = 44;
+  private static readonly STATUS_FRAME_SIZE = 56;
+
+  feed(data: Buffer): { fft?: FFTData; status?: BinaryStatusFrame }[] {
+    this.buffer = Buffer.concat([this.buffer, data]);
+    const results: { fft?: FFTData; status?: BinaryStatusFrame }[] = [];
+
+    while (this.buffer.length >= 4) {
+      const magic = this.buffer.readUInt32LE(0);
+
+      if (magic === BinaryProtocolParser.FFT_MAGIC) {
+        const fft = this.parseFFTFrame();
+        if (fft) {
+          results.push({ fft });
+        } else {
+          break; // Need more data
+        }
+      } else if (magic === BinaryProtocolParser.STATUS_MAGIC) {
+        const status = this.parseStatusFrame();
+        if (status) {
+          results.push({ status });
+        } else {
+          break; // Need more data
+        }
+      } else {
+        // Unknown magic, skip one byte and try again
+        console.warn("[BinaryParser] Unknown magic, skipping byte");
+        this.buffer = this.buffer.subarray(1);
+      }
+    }
+
+    return results;
+  }
+
+  private parseFFTFrame(): FFTData | null {
+    if (this.buffer.length < BinaryProtocolParser.FFT_HEADER_SIZE) {
+      return null;
+    }
+
+    const fftSize = this.buffer.readUInt16LE(32);
+    const totalSize = BinaryProtocolParser.FFT_HEADER_SIZE + fftSize * 4;
+
+    if (this.buffer.length < totalSize) {
+      return null; // Need more data
+    }
+
+    const header: BinaryFFTHeader = {
+      magic: this.buffer.readUInt32LE(0),
+      frameNumber: this.buffer.readUInt32LE(4),
+      timestamp: this.buffer.readDoubleLE(8),
+      centerFreq: this.buffer.readDoubleLE(16),
+      sampleRate: this.buffer.readDoubleLE(24),
+      fftSize: this.buffer.readUInt16LE(32),
+      flags: this.buffer.readUInt16LE(34),
+      peakBin: this.buffer.readInt16LE(36),
+      peakPower: this.buffer.readFloatLE(38),
+    };
+
+    // Parse spectrum data
+    const spectrumBuffer = this.buffer.subarray(
+      BinaryProtocolParser.FFT_HEADER_SIZE,
+      totalSize
+    );
+    const fftData = new Float32Array(
+      spectrumBuffer.buffer,
+      spectrumBuffer.byteOffset,
+      fftSize
+    );
+
+    // Consume the frame from buffer
+    this.buffer = this.buffer.subarray(totalSize);
+
+    return {
+      timestamp: header.timestamp,
+      centerFreq: header.centerFreq,
+      sampleRate: header.sampleRate,
+      fftSize: header.fftSize,
+      fftData: Array.from(fftData),
+      peakBin: header.peakBin,
+      peakPower: header.peakPower,
+      gpsLocked: (header.flags & 0x0001) !== 0,
+    };
+  }
+
+  private parseStatusFrame(): BinaryStatusFrame | null {
+    if (this.buffer.length < BinaryProtocolParser.STATUS_FRAME_SIZE) {
+      return null;
+    }
+
+    const status: BinaryStatusFrame = {
+      magic: this.buffer.readUInt32LE(0),
+      frameCount: this.buffer.readUInt32LE(4),
+      rxTemp: this.buffer.readFloatLE(8),
+      txTemp: this.buffer.readFloatLE(12),
+      gpsLocked: this.buffer.readUInt8(16) === 1,
+      pllLocked: this.buffer.readUInt8(17) === 1,
+      gpsServo: this.buffer.readDoubleLE(20),
+      gpsTime: this.buffer.toString("utf8", 28, 56).replace(/\0+$/, ""),
+    };
+
+    // Consume the frame from buffer
+    this.buffer = this.buffer.subarray(BinaryProtocolParser.STATUS_FRAME_SIZE);
+
+    return status;
+  }
+
+  reset(): void {
+    this.buffer = Buffer.alloc(0);
+  }
+}
+
+// ============================================================================
+// Enhanced Hardware Manager
+// ============================================================================
+
+export class BinaryHardwareManager extends EventEmitter {
+  private config: HardwareConfig = {
+    frequency: 915e6,
+    sampleRate: 10e6,
+    gain: 50,
+  };
+
+  private status: HardwareStatus = {
+    isRunning: false,
+    temperature: 0,
+    gpsLock: false,
+    pllLock: false,
+    frameRate: 0,
+  };
+
+  private sdrProcess: ChildProcess | null = null;
+  private controlSocket: ControlSocketClient | null = null;
+  private binaryParser = new BinaryProtocolParser();
+  private frameCount = 0;
+  private frameCountStartTime = Date.now();
+
+  constructor() {
+    super();
+    console.log("[BinaryHW] Initialized with binary protocol support");
+  }
+
+  async start(): Promise<void> {
+    if (this.status.isRunning) {
+      console.log("[BinaryHW] Already running");
+      return;
+    }
+
+    try {
+      await this.spawnSDRStreamer();
+      this.status.isRunning = true;
+
+      // Connect control socket after short delay
+      setTimeout(async () => {
+        try {
+          this.controlSocket = new ControlSocketClient();
+          await this.controlSocket.connect();
+          console.log("[BinaryHW] Control socket connected");
+        } catch (err) {
+          console.warn("[BinaryHW] Control socket not available:", err);
+        }
+      }, 2000);
+
+      console.log("[BinaryHW] Started successfully");
+    } catch (error) {
+      console.error("[BinaryHW] Failed to start:", error);
+      throw error;
+    }
+  }
+
+  async stop(): Promise<void> {
+    if (this.controlSocket?.isConnected()) {
+      try {
+        await this.controlSocket.stop();
+      } catch (err) {
+        console.warn("[BinaryHW] Error sending stop command:", err);
+      }
+      this.controlSocket.disconnect();
+      this.controlSocket = null;
+    }
+
+    if (this.sdrProcess) {
+      this.sdrProcess.kill("SIGTERM");
+      this.sdrProcess = null;
+    }
+
+    this.binaryParser.reset();
+    this.status.isRunning = false;
+    console.log("[BinaryHW] Stopped");
+  }
+
+  private async spawnSDRStreamer(): Promise<void> {
+    const binPath = path.resolve(__dirname, "../../hardware/bin/sdr_streamer");
+
+    console.log("[BinaryHW] Spawning sdr_streamer with binary mode");
+    console.log("[BinaryHW] Config:", {
+      freq: this.config.frequency / 1e6,
+      rate: this.config.sampleRate / 1e6,
+      gain: this.config.gain,
+    });
+
+    this.sdrProcess = spawn(binPath, [
+      "--freq", this.config.frequency.toString(),
+      "--rate", this.config.sampleRate.toString(),
+      "--gain", this.config.gain.toString(),
+      "--binary", "true",  // Enable binary output mode
+    ]);
+
+    // Handle binary stdout data
+    this.sdrProcess.stdout?.on("data", (data: Buffer) => {
+      this.handleBinaryData(data);
+    });
+
+    this.sdrProcess.stderr?.on("data", (data: Buffer) => {
+      const message = data.toString().trim();
+      if (message) {
+        console.log("[BinaryHW] sdr_streamer:", message);
+      }
+    });
+
+    this.sdrProcess.on("error", (error) => {
+      console.error("[BinaryHW] sdr_streamer error:", error);
+      this.status.isRunning = false;
+    });
+
+    this.sdrProcess.on("exit", (code, signal) => {
+      console.log(`[BinaryHW] sdr_streamer exited with code ${code}, signal ${signal}`);
+      this.status.isRunning = false;
+      this.sdrProcess = null;
+    });
+  }
+
+  private handleBinaryData(data: Buffer): void {
+    const frames = this.binaryParser.feed(data);
+
+    for (const frame of frames) {
+      if (frame.fft) {
+        // Update frame rate calculation
+        this.frameCount++;
+        const now = Date.now();
+        const elapsed = (now - this.frameCountStartTime) / 1000;
+        if (elapsed >= 1.0) {
+          this.status.frameRate = this.frameCount / elapsed;
+          this.frameCount = 0;
+          this.frameCountStartTime = now;
+        }
+
+        // Emit FFT data for WebSocket broadcasting
+        this.emit("fft", frame.fft);
+      }
+
+      if (frame.status) {
+        this.status.temperature = frame.status.rxTemp;
+        this.status.gpsLock = frame.status.gpsLocked;
+        this.status.pllLock = frame.status.pllLocked;
+        this.emit("status", frame.status);
+      }
+    }
+  }
+
+  // ============================================================================
+  // Real-time parameter changes (no restart required)
+  // ============================================================================
+
+  async setFrequency(frequency: number): Promise<void> {
+    this.config.frequency = frequency;
+
+    if (this.controlSocket?.isConnected()) {
+      // Use control socket for instant change
+      try {
+        const response = await this.controlSocket.setFrequency(frequency);
+        if (response.success) {
+          console.log(`[BinaryHW] Frequency set to ${response.actualValue / 1e6} MHz`);
+          return;
+        }
+        console.warn(`[BinaryHW] Frequency change failed: ${response.message}`);
+      } catch (err) {
+        console.warn("[BinaryHW] Control socket error, falling back to restart:", err);
+      }
+    }
+
+    // Fallback: restart with new frequency
+    if (this.status.isRunning) {
+      await this.stop();
+      await this.start();
+    }
+  }
+
+  async setGain(gain: number): Promise<void> {
+    this.config.gain = gain;
+
+    if (this.controlSocket?.isConnected()) {
+      try {
+        const response = await this.controlSocket.setGain(gain);
+        if (response.success) {
+          console.log(`[BinaryHW] Gain set to ${response.actualValue} dB`);
+          return;
+        }
+        console.warn(`[BinaryHW] Gain change failed: ${response.message}`);
+      } catch (err) {
+        console.warn("[BinaryHW] Control socket error, falling back to restart:", err);
+      }
+    }
+
+    if (this.status.isRunning) {
+      await this.stop();
+      await this.start();
+    }
+  }
+
+  async setSampleRate(sampleRate: number): Promise<void> {
+    this.config.sampleRate = sampleRate;
+
+    // Sample rate changes always require restart
+    if (this.status.isRunning) {
+      await this.stop();
+      await this.start();
+    }
+  }
+
+  getConfig(): HardwareConfig {
+    return { ...this.config };
+  }
+
+  getStatus(): HardwareStatus {
+    return { ...this.status };
+  }
+}
+
+// ============================================================================
+// WebSocket Binary Broadcasting
+// ============================================================================
+
+/**
+ * Enhanced WebSocket broadcaster that forwards binary FFT data
+ * directly to clients without re-serializing to JSON.
+ */
+export function createBinaryFFTFrame(data: FFTData): Buffer {
+  const headerSize = 44;
+  const totalSize = headerSize + data.fftSize * 4;
+  const buffer = Buffer.alloc(totalSize);
+
+  // Write header
+  buffer.writeUInt32LE(0x46465431, 0);  // Magic "FFT1"
+  buffer.writeUInt32LE(0, 4);            // Frame number (can be set by caller)
+  buffer.writeDoubleLE(data.timestamp, 8);
+  buffer.writeDoubleLE(data.centerFreq, 16);
+  buffer.writeDoubleLE(data.sampleRate, 24);
+  buffer.writeUInt16LE(data.fftSize, 32);
+  buffer.writeUInt16LE(data.gpsLocked ? 1 : 0, 34);
+  buffer.writeInt16LE(data.peakBin, 36);
+  buffer.writeFloatLE(data.peakPower, 38);
+
+  // Write spectrum data
+  const spectrum = new Float32Array(data.fftData);
+  Buffer.from(spectrum.buffer).copy(buffer, headerSize);
+
+  return buffer;
+}
