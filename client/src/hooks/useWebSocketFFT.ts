@@ -6,6 +6,9 @@ interface FFTData {
   sampleRate: number;
   fftSize: number;
   fftData: number[];
+  peakBin?: number;    // FFT bin with max power
+  peakPower?: number;  // Max power in dBFS
+  gpsLocked?: boolean; // GPSDO lock status
 }
 
 interface UseWebSocketFFTReturn {
@@ -14,6 +17,7 @@ interface UseWebSocketFFTReturn {
   connectionStatus: "connecting" | "connected" | "disconnected" | "reconnecting";
   reconnect: () => void;
   fps: number;
+  gpsLocked: boolean;
 }
 
 export function useWebSocketFFT(): UseWebSocketFFTReturn {
@@ -21,6 +25,7 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected" | "reconnecting">("connecting");
   const [fps, setFps] = useState(0);
+  const [gpsLocked, setGpsLocked] = useState(false);
   
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -49,15 +54,23 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           if (message.type === "fft") {
             setFFTData({
               timestamp: message.timestamp,
               centerFreq: message.centerFreq,
               sampleRate: message.sampleRate,
               fftSize: message.fftSize,
-              fftData: message.fftData
+              fftData: message.fftData,
+              peakBin: message.peakBin,
+              peakPower: message.peakPower,
+              gpsLocked: message.gpsLocked,
             });
+
+            // Update GPS lock status
+            if (message.gpsLocked !== undefined) {
+              setGpsLocked(message.gpsLocked);
+            }
 
             // Update FPS counter
             fpsCounterRef.current.count++;
@@ -127,6 +140,7 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
     isConnected,
     connectionStatus,
     reconnect,
-    fps
+    fps,
+    gpsLocked,
   };
 }

@@ -7,7 +7,10 @@ interface FFTData {
   centerFreq: number;
   sampleRate: number;
   fftSize: number;
-  fftData: number[]; // dBm values
+  fftData: number[];   // dBFS values
+  peakBin?: number;    // FFT bin with max power
+  peakPower?: number;  // Max power in dBFS
+  gpsLocked?: boolean; // GPSDO lock status
 }
 
 let wss: WebSocketServer | null = null;
