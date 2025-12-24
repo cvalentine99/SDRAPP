@@ -1,11 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
+interface ChannelData {
+  fftData: number[];
+  peakBin: number;
+  peakPower: number;
+}
+
 interface FFTData {
   timestamp: number;
   centerFreq: number;
   sampleRate: number;
   fftSize: number;
   fftData: number[];
+  peakBin?: number;    // FFT bin with max power
+  peakPower?: number;  // Max power in dBFS
+  gpsLocked?: boolean; // GPSDO lock status
+  channelCount?: number;  // Number of channels (1 or 2 for B210)
+  channels?: ChannelData[];  // Per-channel data (P3 dual-channel support)
 }
 
 interface UseWebSocketFFTReturn {
@@ -14,6 +25,8 @@ interface UseWebSocketFFTReturn {
   connectionStatus: "connecting" | "connected" | "disconnected" | "reconnecting";
   reconnect: () => void;
   fps: number;
+  gpsLocked: boolean;
+  channelCount: number;  // Number of active channels (1 or 2)
 }
 
 export function useWebSocketFFT(): UseWebSocketFFTReturn {
@@ -21,7 +34,9 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected" | "reconnecting">("connecting");
   const [fps, setFps] = useState(0);
-  
+  const [gpsLocked, setGpsLocked] = useState(false);
+  const [channelCount, setChannelCount] = useState(1);
+
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -49,15 +64,30 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          
+
           if (message.type === "fft") {
             setFFTData({
               timestamp: message.timestamp,
               centerFreq: message.centerFreq,
               sampleRate: message.sampleRate,
               fftSize: message.fftSize,
-              fftData: message.fftData
+              fftData: message.fftData,
+              peakBin: message.peakBin,
+              peakPower: message.peakPower,
+              gpsLocked: message.gpsLocked,
+              channelCount: message.channelCount,
+              channels: message.channels,
             });
+
+            // Update GPS lock status
+            if (message.gpsLocked !== undefined) {
+              setGpsLocked(message.gpsLocked);
+            }
+
+            // Update channel count
+            if (message.channelCount !== undefined) {
+              setChannelCount(message.channelCount);
+            }
 
             // Update FPS counter
             fpsCounterRef.current.count++;
@@ -127,6 +157,8 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
     isConnected,
     connectionStatus,
     reconnect,
-    fps
+    fps,
+    gpsLocked,
+    channelCount,
   };
 }
