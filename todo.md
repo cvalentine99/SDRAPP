@@ -162,3 +162,45 @@
 - [x] Add troubleshooting section
 - [x] Add security and performance tuning sections
 - [ ] Test production mode on gx10-alpha (requires hardware access)
+
+
+## End-to-End Verification (Dec 24, 2025)
+
+### Backend Verification
+- [ ] Check all tRPC routers are registered in routers.ts
+- [ ] Verify device-router.ts procedures (setFrequency, setGain, setSampleRate, getStatus)
+- [ ] Verify telemetry-router.ts procedures (getMetrics)
+- [ ] Verify recording-router.ts procedures (list, start, stop)
+- [ ] Verify scanner-router.ts procedures (scan)
+- [ ] Verify system router procedures (getSDRMode, switchSDRMode)
+- [ ] Check hardware-manager-factory.ts mode switching
+- [ ] Verify WebSocket server initialization in _core/index.ts
+
+### Frontend Verification
+- [ ] Test Spectrum page - frequency/gain controls, waterfall display
+- [ ] Test Scanner page - scan controls, results visualization
+- [ ] Test Device page - device info, gain staging, calibration
+- [ ] Test Recording page - list recordings, start/stop
+- [ ] Test Telemetry page - metrics display
+- [ ] Test AI Assistant page - chat functionality
+- [ ] Test Settings page - mode toggle
+- [ ] Verify navigation works between all pages
+
+### WebSocket Verification
+- [ ] Test WebSocket connection on /ws/fft
+- [ ] Verify FFT data streaming in demo mode
+- [ ] Verify reconnection logic works
+- [ ] Test connection status indicators
+
+### Database Verification
+- [ ] Verify recordings table schema
+- [ ] Verify users table schema
+- [ ] Test database migrations with pnpm db:push
+- [ ] Verify database connection in production
+
+### Integration Testing
+- [ ] Test demo mode end-to-end
+- [ ] Test production mode switching
+- [ ] Test all tRPC queries and mutations
+- [ ] Verify error handling and loading states
+- [ ] Test authentication flow

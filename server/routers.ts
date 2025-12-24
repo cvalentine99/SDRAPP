@@ -2,6 +2,9 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { deviceRouter } from "./device-router";
+import { telemetryRouter } from "./telemetry-router";
+import { recordingRouter } from "./recording-router";
 import { scannerRouter } from "./scanner-router";
 
 export const appRouter = router({
@@ -18,6 +21,9 @@ export const appRouter = router({
     }),
   }),
 
+  device: deviceRouter,
+  telemetry: telemetryRouter,
+  recording: recordingRouter,
   scanner: scannerRouter,
 });
 
