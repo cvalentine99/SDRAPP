@@ -4,12 +4,14 @@ interface SpectrographDisplayProps {
   width?: number;
   height?: number;
   fftSize?: number;
+  fftData?: number[] | null;
 }
 
 export function SpectrographDisplay({
   width = 1024,
   height = 200,
   fftSize = 2048,
+  fftData = null,
 }: SpectrographDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);

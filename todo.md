@@ -268,3 +268,18 @@
 - [x] Create pre-deployment checklist (included in README)
 - [x] Package all files into deployment archive (ettus-sdr-web-deployment-20251224.tar.gz)
 - [ ] Test installation script on gx10-alpha (requires hardware access)
+
+
+## WebSocket FFT Streaming (Dec 24, 2025)
+
+- [x] Create WebSocket server at /ws/fft endpoint
+- [x] Wire hardware manager to emit FFT events (60 FPS simulated data)
+- [x] Create useWebSocketFFT hook in frontend
+- [x] Wire Spectrum page to consume FFT stream
+- [x] Update WaterfallDisplay to use real FFT data
+- [x] Add FPS counter to useWebSocketFFT hook
+- [x] Add connection status tracking (connecting/connected/disconnected/reconnecting)
+- [x] Add exponential backoff reconnection logic
+- [x] Server logs show WebSocket clients connecting successfully
+- [ ] Test 60 FPS streaming performance in browser (needs manual testing)
+- [ ] Test demo and production modes (needs manual testing)

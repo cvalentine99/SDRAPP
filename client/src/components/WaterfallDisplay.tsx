@@ -4,12 +4,16 @@ interface WaterfallDisplayProps {
   width?: number;
   height?: number;
   fftSize?: number;
+  fftData?: number[] | null;
+  isRunning?: boolean;
 }
 
 export function WaterfallDisplay({
   width = 1024,
   height = 512,
   fftSize = 2048,
+  fftData = null,
+  isRunning = true,
 }: WaterfallDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);

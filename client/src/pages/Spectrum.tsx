@@ -16,9 +16,13 @@ import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
 import { trpc } from "@/lib/trpc";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { useWebSocketFFT } from "@/hooks/useWebSocketFFT";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
+  
+  // WebSocket FFT streaming
+  const { fftData, isConnected, connectionStatus, reconnect, fps: wsFps } = useWebSocketFFT();
   const [frequency, setFrequency] = useState("915.0");
   const [gain, setGain] = useState([50]);
   
@@ -75,7 +79,13 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-4rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-secondary/30 relative overflow-hidden">
-              <WaterfallDisplay width={1024} height={512} fftSize={2048} />
+              <WaterfallDisplay 
+                width={1024} 
+                height={512} 
+                fftSize={2048} 
+                fftData={fftData?.fftData || null}
+                isRunning={isRunning && isConnected}
+              />
               {/* HUD Corners */}
               <div className="absolute top-2 left-2 w-8 h-8 border-l-2 border-t-2 border-secondary/50 pointer-events-none" />
               <div className="absolute top-2 right-2 w-8 h-8 border-r-2 border-t-2 border-secondary/50 pointer-events-none" />
@@ -96,7 +106,12 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-3.5rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-primary/30 overflow-hidden">
-              <SpectrographDisplay width={1024} height={150} fftSize={2048} />
+              <SpectrographDisplay 
+                width={1024} 
+                height={150} 
+                fftSize={2048} 
+                fftData={fftData?.fftData || null}
+              />
             </div>
           </CardContent>
         </Card>
