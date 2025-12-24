@@ -8,19 +8,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Kbd } from "@/components/ui/kbd";
 import { trpc } from "@/lib/trpc";
 import {
   Activity,
+  Command,
   Database,
   Radio,
   Search,
   Settings,
   User,
   Waves,
-  Zap,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { GlobalAIChat } from "./GlobalAIChat";
+import {
+  BookmarkSelector,
+  useFrequencyBookmarks,
+  type FrequencyBookmark,
+} from "./FrequencyBookmarks";
 
 interface SDRLayoutProps {
   children: React.ReactNode;
@@ -31,10 +37,26 @@ export function SDRLayout({ children }: SDRLayoutProps) {
   const [location] = useLocation();
   const logoutMutation = trpc.auth.logout.useMutation();
   const { data: deviceInfo } = trpc.device.getInfo.useQuery();
+  const setFrequencyMutation = trpc.device.setFrequency.useMutation();
+  const setGainMutation = trpc.device.setGain.useMutation();
+
+  // Frequency bookmarks
+  const { bookmarks } = useFrequencyBookmarks();
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
     window.location.href = "/";
+  };
+
+  const handleBookmarkSelect = async (bookmark: FrequencyBookmark) => {
+    try {
+      await setFrequencyMutation.mutateAsync({ frequency: bookmark.frequency });
+      if (bookmark.gain !== undefined) {
+        await setGainMutation.mutateAsync({ gain: bookmark.gain });
+      }
+    } catch (error) {
+      console.error("Failed to apply bookmark:", error);
+    }
   };
 
   const navItems = [
@@ -92,8 +114,35 @@ export function SDRLayout({ children }: SDRLayoutProps) {
             })}
           </nav>
 
-          {/* User Profile */}
-          <div className="flex items-center gap-4">
+          {/* Right side: Bookmarks, Command palette hint, User */}
+          <div className="flex items-center gap-3">
+            {/* Frequency Bookmarks */}
+            <BookmarkSelector
+              bookmarks={bookmarks}
+              onSelect={handleBookmarkSelect}
+            />
+
+            {/* Command palette hint */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-border text-muted-foreground hover:text-foreground hidden md:flex"
+              onClick={() => {
+                // Trigger command palette
+                const event = new KeyboardEvent("keydown", {
+                  key: "k",
+                  metaKey: true,
+                  bubbles: true,
+                });
+                document.dispatchEvent(event);
+              }}
+            >
+              <Command className="w-3 h-3" />
+              <span className="text-xs">Search</span>
+              <Kbd className="ml-1 text-[10px]">⌘K</Kbd>
+            </Button>
+
+            {/* User Profile */}
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -158,8 +207,11 @@ export function SDRLayout({ children }: SDRLayoutProps) {
               GPSDO: <span className="text-secondary">{deviceInfo?.gpsdo || "--"}</span>
             </div>
           </div>
-          <div className="text-muted-foreground">
-            © 2025 ETTUS RESEARCH | B210 USRP
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <span className="hidden lg:inline-flex items-center gap-1">
+              Press <Kbd className="text-[10px]">?</Kbd> for shortcuts
+            </span>
+            <span>© 2025 ETTUS RESEARCH | B210 USRP</span>
           </div>
         </div>
       </footer>

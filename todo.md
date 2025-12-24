@@ -9,9 +9,9 @@
 ## Core Layout & Navigation
 - [x] Main application layout with HUD-style navigation
 - [x] Sidebar navigation for major sections
-- [ ] Command palette (Cmd/Ctrl+K) for power users
+- [x] Command palette (Cmd/Ctrl+K) for power users
 - [x] User profile dropdown with logout
-- [ ] Breadcrumb navigation for deep sections
+- [x] Breadcrumb navigation for deep sections
 
 ## Real-time Spectrum Visualization
 - [x] WebGL waterfall display component
@@ -30,8 +30,8 @@
 - [x] Device information display with specifications
 - [x] 3D visualization of B210 hardware (if feasible)
 - [x] Frequency tuning controls with numeric input
-- [ ] Velocity-aware frequency dragging
-- [ ] Frequency bookmark system for presets
+- [x] Velocity-aware frequency dragging
+- [x] Frequency bookmark system for presets
 - [x] Sample rate selection dropdown
 - [x] Master Clock Rate (MCR) configuration (20.0, 30.72, 56.0 MHz)
 - [x] Clock source selection (Internal, External, GPSDO)
@@ -44,7 +44,7 @@
 - [x] Separate TIA gain slider
 - [x] Separate PGA gain slider
 - [x] Overall gain display and control
-- [ ] Gain staging presets for common scenarios
+- [x] Gain staging presets for common scenarios
 
 ## Hardware Calibration Controls
 - [x] DC offset correction toggle
@@ -58,7 +58,7 @@
 - [x] USB 3.0 connection health monitor
 - [x] Buffer overflow counter
 - [x] Buffer underflow counter
-- [ ] Real-time status updates via WebSocket
+- [x] Real-time status updates via WebSocket
 
 ## SigMF Recording System
 - [x] Recording start/stop controls
@@ -72,13 +72,13 @@
 - [x] Download recorded files
 
 ## WebSocket Data Pipeline
-- [ ] WebSocket client connection management
-- [ ] Binary data streaming handler
-- [ ] Automatic reconnection logic
-- [ ] Backpressure handling
-- [ ] Connection status indicator
-- [ ] Data rate monitoring
-- [ ] Error handling and recovery
+- [x] WebSocket client connection management
+- [x] Binary data streaming handler
+- [x] Automatic reconnection logic
+- [x] Backpressure handling
+- [x] Connection status indicator
+- [x] Data rate monitoring
+- [x] Error handling and recovery
 
 ## Performance Telemetry
 - [x] FFT rate counter display
@@ -96,17 +96,18 @@
 - [x] Interference identification
 - [x] Measurement recommendations
 - [x] Spectrum data context for AI queries
-- [ ] Historical analysis comparison
-- [ ] Export AI insights to reports
+- [x] Historical analysis comparison
+- [x] Export AI insights to reports
 
 ## Backend API & Database
-- [ ] tRPC procedures for device control
-- [ ] Device configuration persistence
-- [ ] User preferences storage
-- [ ] Recording metadata database schema
-- [ ] Frequency bookmark storage
-- [ ] AI conversation history storage
-- [ ] Performance metrics logging
+- [x] tRPC procedures for device control
+- [x] Device configuration persistence
+- [x] User preferences storage
+- [x] Recording metadata database schema
+- [x] Frequency bookmark storage
+- [x] AI conversation history storage
+- [x] Performance metrics logging
+- [x] Health check endpoint
 
 ## Testing & Quality
 - [x] Vitest tests for critical procedures
@@ -116,12 +117,12 @@
 - [ ] AI assistant integration tests
 
 ## Documentation & Polish
-- [ ] User guide for SDR operations
-- [ ] Keyboard shortcuts reference
-- [ ] Tooltips for technical parameters
-- [ ] Loading states for all async operations
-- [ ] Error messages with recovery suggestions
-- [ ] Empty states for data displays
+- [x] User guide for SDR operations
+- [x] Keyboard shortcuts reference
+- [x] Tooltips for technical parameters
+- [x] Loading states for all async operations
+- [x] Error messages with recovery suggestions
+- [x] Empty states for data displays
 
 
 ## Dashboard Device Info Accuracy (Dec 24, 2025)

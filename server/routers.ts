@@ -8,6 +8,7 @@ import { recordingRouter } from "./recording-router";
 import { scannerRouter } from "./scanner-router";
 import { settingsRouter } from "./settings-router";
 import { aiRouter } from "./ai-router";
+import { healthRouter } from "./health-router";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -29,6 +30,7 @@ export const appRouter = router({
   scanner: scannerRouter,
   settings: settingsRouter,
   ai: aiRouter,
+  health: healthRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -382,6 +382,25 @@ function identifySignalType(frequency: number): {
   };
 }
 
+// Store for analysis history (in-memory for demo, use DB in production)
+interface AnalysisRecord {
+  id: string;
+  timestamp: number;
+  frequency: number;
+  signalType: string;
+  description: string;
+  confidence: number;
+  insights: string[];
+  status: {
+    temperature: number;
+    gpsLock: boolean;
+    pllLock: boolean;
+  };
+}
+
+const analysisHistory: AnalysisRecord[] = [];
+const MAX_HISTORY_SIZE = 100;
+
 export const aiRouter = router({
   chat: publicProcedure
     .input(
@@ -461,7 +480,29 @@ export const aiRouter = router({
         insights.push("⚠️ PLL not locked - check hardware connection");
       }
 
+      // Save to history
+      const record: AnalysisRecord = {
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        frequency: config.frequency,
+        signalType: signalAnalysis.type,
+        description: signalAnalysis.description,
+        confidence: signalAnalysis.confidence,
+        insights,
+        status: {
+          temperature: status.temperature,
+          gpsLock: status.gpsLock,
+          pllLock: status.pllLock,
+        },
+      };
+
+      analysisHistory.unshift(record);
+      if (analysisHistory.length > MAX_HISTORY_SIZE) {
+        analysisHistory.pop();
+      }
+
       return {
+        id: record.id,
         frequency: config.frequency,
         sampleRate: config.sampleRate,
         gain: config.gain,
@@ -483,4 +524,259 @@ export const aiRouter = router({
       );
     }
   }),
+
+  // Get analysis history for comparison
+  getHistory: publicProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional().default(20),
+        frequencyFilter: z.number().optional(),
+      })
+    )
+    .query(({ input }) => {
+      let filtered = analysisHistory;
+
+      // Optional frequency filter
+      if (input.frequencyFilter !== undefined) {
+        const targetFreq = input.frequencyFilter;
+        const tolerance = 1e6; // 1 MHz tolerance
+        filtered = analysisHistory.filter(
+          (record) => Math.abs(record.frequency - targetFreq) <= tolerance
+        );
+      }
+
+      return {
+        records: filtered.slice(0, input.limit),
+        total: filtered.length,
+      };
+    }),
+
+  // Compare two analysis records
+  compareAnalysis: publicProcedure
+    .input(
+      z.object({
+        id1: z.string(),
+        id2: z.string(),
+      })
+    )
+    .query(({ input }) => {
+      const record1 = analysisHistory.find((r) => r.id === input.id1);
+      const record2 = analysisHistory.find((r) => r.id === input.id2);
+
+      if (!record1 || !record2) {
+        throw new Error("Analysis record not found");
+      }
+
+      // Calculate differences
+      const frequencyDiff = record2.frequency - record1.frequency;
+      const timeDiff = record2.timestamp - record1.timestamp;
+      const temperatureDiff = record2.status.temperature - record1.status.temperature;
+      const signalChanged = record1.signalType !== record2.signalType;
+
+      return {
+        record1,
+        record2,
+        comparison: {
+          frequencyDiff,
+          frequencyDiffMHz: frequencyDiff / 1e6,
+          timeDiff,
+          timeDiffMinutes: timeDiff / 60000,
+          temperatureDiff,
+          signalChanged,
+          gpsLockChanged: record1.status.gpsLock !== record2.status.gpsLock,
+          pllLockChanged: record1.status.pllLock !== record2.status.pllLock,
+        },
+      };
+    }),
+
+  // Export analysis report
+  exportReport: publicProcedure
+    .input(
+      z.object({
+        format: z.enum(["json", "markdown", "csv"]).default("json"),
+        includeHistory: z.boolean().optional().default(false),
+        limit: z.number().min(1).max(100).optional().default(10),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const config = hardware.getConfig();
+      const status = hardware.getStatus();
+      const signalAnalysis = identifySignalType(config.frequency);
+
+      const reportData = {
+        generatedAt: new Date().toISOString(),
+        currentAnalysis: {
+          frequency: config.frequency,
+          frequencyMHz: config.frequency / 1e6,
+          sampleRate: config.sampleRate,
+          sampleRateMSPS: config.sampleRate / 1e6,
+          gain: config.gain,
+          signalType: signalAnalysis.type,
+          description: signalAnalysis.description,
+          confidence: signalAnalysis.confidence,
+          status: {
+            temperature: status.temperature,
+            gpsLock: status.gpsLock,
+            pllLock: status.pllLock,
+          },
+        },
+        history: input.includeHistory
+          ? analysisHistory.slice(0, input.limit)
+          : undefined,
+      };
+
+      switch (input.format) {
+        case "json":
+          return {
+            format: "json",
+            content: JSON.stringify(reportData, null, 2),
+            filename: `sdr-analysis-${Date.now()}.json`,
+            mimeType: "application/json",
+          };
+
+        case "markdown":
+          const md = generateMarkdownReport(reportData);
+          return {
+            format: "markdown",
+            content: md,
+            filename: `sdr-analysis-${Date.now()}.md`,
+            mimeType: "text/markdown",
+          };
+
+        case "csv":
+          const csv = generateCSVReport(reportData);
+          return {
+            format: "csv",
+            content: csv,
+            filename: `sdr-analysis-${Date.now()}.csv`,
+            mimeType: "text/csv",
+          };
+
+        default:
+          throw new Error(`Unknown format: ${input.format}`);
+      }
+    }),
+
+  // Clear history
+  clearHistory: publicProcedure.mutation(() => {
+    const count = analysisHistory.length;
+    analysisHistory.length = 0;
+    return { cleared: count };
+  }),
 });
+
+// Generate markdown report
+function generateMarkdownReport(data: {
+  generatedAt: string;
+  currentAnalysis: {
+    frequency: number;
+    frequencyMHz: number;
+    sampleRate: number;
+    sampleRateMSPS: number;
+    gain: number;
+    signalType: string;
+    description: string;
+    confidence: number;
+    status: { temperature: number; gpsLock: boolean; pllLock: boolean };
+  };
+  history?: AnalysisRecord[];
+}): string {
+  const lines = [
+    "# SDR Spectrum Analysis Report",
+    "",
+    `**Generated:** ${data.generatedAt}`,
+    "",
+    "## Current Analysis",
+    "",
+    "| Parameter | Value |",
+    "|-----------|-------|",
+    `| Frequency | ${data.currentAnalysis.frequencyMHz.toFixed(3)} MHz |`,
+    `| Sample Rate | ${data.currentAnalysis.sampleRateMSPS.toFixed(2)} MSPS |`,
+    `| Gain | ${data.currentAnalysis.gain} dB |`,
+    `| Signal Type | ${data.currentAnalysis.signalType} |`,
+    `| Description | ${data.currentAnalysis.description} |`,
+    `| Confidence | ${(data.currentAnalysis.confidence * 100).toFixed(0)}% |`,
+    "",
+    "## Hardware Status",
+    "",
+    `- **Temperature:** ${data.currentAnalysis.status.temperature.toFixed(1)}°C`,
+    `- **GPS Lock:** ${data.currentAnalysis.status.gpsLock ? "✅ Yes" : "❌ No"}`,
+    `- **PLL Lock:** ${data.currentAnalysis.status.pllLock ? "✅ Yes" : "❌ No"}`,
+    "",
+  ];
+
+  if (data.history && data.history.length > 0) {
+    lines.push("## Analysis History", "");
+    lines.push("| Time | Frequency | Signal Type | Confidence |");
+    lines.push("|------|-----------|-------------|------------|");
+
+    for (const record of data.history) {
+      const time = new Date(record.timestamp).toLocaleString();
+      lines.push(
+        `| ${time} | ${(record.frequency / 1e6).toFixed(3)} MHz | ${record.signalType} | ${(record.confidence * 100).toFixed(0)}% |`
+      );
+    }
+  }
+
+  lines.push("", "---", "", "*Generated by Ettus B210 SDR Web Application*");
+
+  return lines.join("\n");
+}
+
+// Generate CSV report
+function generateCSVReport(data: {
+  generatedAt: string;
+  currentAnalysis: {
+    frequency: number;
+    frequencyMHz: number;
+    sampleRate: number;
+    sampleRateMSPS: number;
+    gain: number;
+    signalType: string;
+    description: string;
+    confidence: number;
+    status: { temperature: number; gpsLock: boolean; pllLock: boolean };
+  };
+  history?: AnalysisRecord[];
+}): string {
+  const lines = [
+    "timestamp,frequency_mhz,sample_rate_msps,gain_db,signal_type,confidence,temperature_c,gps_lock,pll_lock",
+  ];
+
+  // Add current analysis
+  const curr = data.currentAnalysis;
+  lines.push(
+    [
+      data.generatedAt,
+      curr.frequencyMHz.toFixed(3),
+      curr.sampleRateMSPS.toFixed(2),
+      curr.gain,
+      `"${curr.signalType}"`,
+      curr.confidence.toFixed(2),
+      curr.status.temperature.toFixed(1),
+      curr.status.gpsLock,
+      curr.status.pllLock,
+    ].join(",")
+  );
+
+  // Add history
+  if (data.history) {
+    for (const record of data.history) {
+      lines.push(
+        [
+          new Date(record.timestamp).toISOString(),
+          (record.frequency / 1e6).toFixed(3),
+          "N/A",
+          "N/A",
+          `"${record.signalType}"`,
+          record.confidence.toFixed(2),
+          record.status.temperature.toFixed(1),
+          record.status.gpsLock,
+          record.status.pllLock,
+        ].join(",")
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
