@@ -139,3 +139,26 @@
 - [x] Add device info panel to Device tab
 - [x] Update frequency range (50 MHz - 6 GHz)
 - [x] Update max sample rate (61.44 MSPS)
+
+
+## Frequency Scanner Feature (Dec 24, 2025)
+
+- [x] Create Scanner.tsx page with scan controls
+- [x] Add scanner navigation item to SDRLayout
+- [x] Implement scanner backend router (scanner-router.ts)
+- [x] Integrate with freq_scanner C++ daemon (demo mode simulated, production uses binary)
+- [x] Add scan results visualization (SVG chart + table)
+- [x] Add scan progress indicator
+- [x] Add export scan results to JSON
+- [ ] Test frequency scanning in production mode with real B210
+
+## Production Deployment Preparation (Dec 24, 2025)
+
+- [x] Create PRODUCTION_DEPLOYMENT.md guide
+- [x] Document environment variables configuration
+- [x] Create systemd service files for auto-start
+- [x] Document backup and recovery procedures
+- [x] Create deployment checklist
+- [x] Add troubleshooting section
+- [x] Add security and performance tuning sections
+- [ ] Test production mode on gx10-alpha (requires hardware access)

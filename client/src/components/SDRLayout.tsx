@@ -13,6 +13,7 @@ import {
   Activity,
   Database,
   Radio,
+  Search,
   Settings,
   User,
   Waves,
@@ -36,6 +37,7 @@ export function SDRLayout({ children }: SDRLayoutProps) {
 
   const navItems = [
     { path: "/", label: "Spectrum", icon: Waves },
+    { path: "/scanner", label: "Scanner", icon: Search },
     { path: "/device", label: "Device", icon: Radio },
     { path: "/recording", label: "Recording", icon: Database },
     { path: "/telemetry", label: "Telemetry", icon: Activity },

@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SDRLayout } from "./components/SDRLayout";
 import Spectrum from "./pages/Spectrum";
+import Scanner from "./pages/Scanner";
 import Device from "./pages/Device";
 import Recording from "./pages/Recording";
 import Telemetry from "./pages/Telemetry";
@@ -16,6 +17,7 @@ function Router() {
     <SDRLayout>
       <Switch>
         <Route path={"/"} component={Spectrum} />
+        <Route path={"/scanner"} component={Scanner} />
         <Route path={"/device"} component={Device} />
         <Route path={"/recording"} component={Recording} />
         <Route path={"/telemetry"} component={Telemetry} />
