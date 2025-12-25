@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 interface WaterfallDisplayProps {
   width?: number;
@@ -6,21 +6,42 @@ interface WaterfallDisplayProps {
   fftSize?: number;
   fftData?: number[] | null;
   isRunning?: boolean;
+  /** dB range for color mapping: [minDb, maxDb]. Default: [-120, -20] */
+  dbRange?: [number, number];
 }
 
+/**
+ * WaterfallDisplay - WebGL-accelerated spectrum waterfall visualization
+ *
+ * Renders real FFT data from the SDR hardware as a scrolling waterfall display.
+ * Uses a circular texture buffer for efficient GPU-based scrolling.
+ */
 export function WaterfallDisplay({
   width = 1024,
   height = 512,
   fftSize = 2048,
   fftData = null,
   isRunning = true,
+  dbRange = [-120, -20],
 }: WaterfallDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const programRef = useRef<WebGLProgram | null>(null);
   const textureRef = useRef<WebGLTexture | null>(null);
-  const [yOffset, setYOffset] = useState(0);
+  const currentRowRef = useRef(0);
   const animationFrameRef = useRef<number | undefined>(undefined);
+  const lastFftDataRef = useRef<number[] | null>(null);
+  const textureWidthRef = useRef(fftSize);
+
+  // Normalize dBFS value to 0-255 range for texture
+  const normalizeDb = useCallback(
+    (db: number): number => {
+      const [minDb, maxDb] = dbRange;
+      const normalized = (db - minDb) / (maxDb - minDb);
+      return Math.max(0, Math.min(255, Math.round(normalized * 255)));
+    },
+    [dbRange]
+  );
 
   // Initialize WebGL context and shaders
   useEffect(() => {
@@ -34,7 +55,7 @@ export function WaterfallDisplay({
     }) as WebGLRenderingContext | null;
 
     if (!gl) {
-      console.error("WebGL not supported");
+      console.error("[WaterfallDisplay] WebGL not supported");
       return;
     }
 
@@ -46,7 +67,7 @@ export function WaterfallDisplay({
       attribute vec2 a_texCoord;
       varying vec2 v_texCoord;
       uniform float u_yOffset;
-      
+
       void main() {
         gl_Position = vec4(a_position, 0.0, 1.0);
         // Apply circular Y-offset for scrolling effect
@@ -59,7 +80,7 @@ export function WaterfallDisplay({
       precision mediump float;
       varying vec2 v_texCoord;
       uniform sampler2D u_texture;
-      
+
       // Cyberpunk color mapping: black -> cyan -> pink -> white
       vec3 colorMap(float value) {
         if (value < 0.25) {
@@ -76,7 +97,7 @@ export function WaterfallDisplay({
           return mix(vec3(1.0, 0.0, 0.8), vec3(1.0, 1.0, 1.0), (value - 0.75) * 4.0);
         }
       }
-      
+
       void main() {
         float intensity = texture2D(u_texture, v_texCoord).r;
         vec3 color = colorMap(intensity);
@@ -90,7 +111,10 @@ export function WaterfallDisplay({
     gl.compileShader(vertexShader);
 
     if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-      console.error("Vertex shader error:", gl.getShaderInfoLog(vertexShader));
+      console.error(
+        "[WaterfallDisplay] Vertex shader error:",
+        gl.getShaderInfoLog(vertexShader)
+      );
       return;
     }
 
@@ -100,7 +124,7 @@ export function WaterfallDisplay({
 
     if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
       console.error(
-        "Fragment shader error:",
+        "[WaterfallDisplay] Fragment shader error:",
         gl.getShaderInfoLog(fragmentShader)
       );
       return;
@@ -113,7 +137,10 @@ export function WaterfallDisplay({
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error("Program link error:", gl.getProgramInfoLog(program));
+      console.error(
+        "[WaterfallDisplay] Program link error:",
+        gl.getProgramInfoLog(program)
+      );
       return;
     }
 
@@ -157,6 +184,7 @@ export function WaterfallDisplay({
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
     // Initialize texture with empty data
+    textureWidthRef.current = fftSize;
     const textureData = new Uint8Array(fftSize * height);
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -170,55 +198,16 @@ export function WaterfallDisplay({
       textureData
     );
 
-    // Simulate incoming FFT data for demo
-    let currentRow = 0;
-    const simulateData = () => {
-      if (!gl || !texture) return;
+    // Reset row counter
+    currentRowRef.current = 0;
 
-      // Generate simulated FFT data (replace with real WebSocket data)
-      const fftData = new Uint8Array(fftSize);
-      for (let i = 0; i < fftSize; i++) {
-        // Simulate some peaks and noise
-        const freq = i / fftSize;
-        let value = Math.random() * 30; // Noise floor
-
-        // Add some simulated signals
-        if (Math.abs(freq - 0.3) < 0.02) value += 150; // Signal at 30%
-        if (Math.abs(freq - 0.6) < 0.01) value += 200; // Strong signal at 60%
-        if (Math.abs(freq - 0.75) < 0.015) value += 100; // Signal at 75%
-
-        fftData[i] = Math.min(255, value);
-      }
-
-      // Update one row of the texture (circular buffer technique)
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texSubImage2D(
-        gl.TEXTURE_2D,
-        0,
-        0,
-        currentRow,
-        fftSize,
-        1,
-        gl.LUMINANCE,
-        gl.UNSIGNED_BYTE,
-        fftData
-      );
-
-      // Update Y-offset for scrolling
-      currentRow = (currentRow + 1) % height;
-      setYOffset(currentRow / height);
-    };
-
-    // Render loop
+    // Render loop (just renders, data updates happen in fftData effect)
     const render = () => {
       if (!gl || !program) return;
 
-      // Update with new data (60 FPS)
-      simulateData();
-
       // Set uniform for Y-offset
       const yOffsetLocation = gl.getUniformLocation(program, "u_yOffset");
-      gl.uniform1f(yOffsetLocation, currentRow / height);
+      gl.uniform1f(yOffsetLocation, currentRowRef.current / height);
 
       // Render
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -239,8 +228,59 @@ export function WaterfallDisplay({
         gl.deleteProgram(program);
         gl.deleteTexture(texture);
       }
+      glRef.current = null;
+      programRef.current = null;
+      textureRef.current = null;
     };
   }, [fftSize, height]);
+
+  // Update texture when new FFT data arrives
+  useEffect(() => {
+    const gl = glRef.current;
+    const texture = textureRef.current;
+
+    // Skip if no WebGL context, no texture, or not running
+    if (!gl || !texture || !isRunning) return;
+
+    // Skip if no data or same data as last frame
+    if (!fftData || fftData === lastFftDataRef.current) return;
+    lastFftDataRef.current = fftData;
+
+    // Handle FFT size mismatch (resample if necessary)
+    const textureWidth = textureWidthRef.current;
+    const rowData = new Uint8Array(textureWidth);
+
+    if (fftData.length === textureWidth) {
+      // Direct mapping - normalize dBFS to 0-255
+      for (let i = 0; i < textureWidth; i++) {
+        rowData[i] = normalizeDb(fftData[i]);
+      }
+    } else {
+      // Resample FFT data to texture width
+      const ratio = fftData.length / textureWidth;
+      for (let i = 0; i < textureWidth; i++) {
+        const srcIdx = Math.floor(i * ratio);
+        rowData[i] = normalizeDb(fftData[srcIdx]);
+      }
+    }
+
+    // Update one row of the texture (circular buffer technique)
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texSubImage2D(
+      gl.TEXTURE_2D,
+      0,
+      0,
+      currentRowRef.current,
+      textureWidth,
+      1,
+      gl.LUMINANCE,
+      gl.UNSIGNED_BYTE,
+      rowData
+    );
+
+    // Advance row pointer (circular buffer)
+    currentRowRef.current = (currentRowRef.current + 1) % height;
+  }, [fftData, isRunning, height, normalizeDb]);
 
   return (
     <canvas
