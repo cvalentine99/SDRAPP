@@ -37,11 +37,13 @@ export function setupWebSocket(server: HTTPServer) {
     ws.on("close", () => {
       console.log("[WebSocket] Client disconnected, total clients:", clients.size - 1);
       clients.delete(ws);
+      clientDropCounts.delete(ws);  // Clean up drop counter
     });
 
     ws.on("error", (error) => {
       console.error("[WebSocket] Client error:", error.message);
       clients.delete(ws);
+      clientDropCounts.delete(ws);  // Clean up drop counter
     });
 
     // Send initial connection confirmation
@@ -57,6 +59,13 @@ export function setupWebSocket(server: HTTPServer) {
   console.log("[WebSocket] FFT stream server initialized on /ws/fft");
 }
 
+// Backpressure threshold: drop frames if client buffer exceeds this size
+// 64KB allows ~8 frames of backlog before dropping (2048 bins × 4 bytes × 8 frames)
+const MAX_BUFFERED_AMOUNT = 64 * 1024;
+
+// Track dropped frames per client for monitoring
+const clientDropCounts = new Map<WebSocket, number>();
+
 export function broadcastFFT(data: FFTData) {
   if (clients.size === 0) return;
 
@@ -67,7 +76,19 @@ export function broadcastFFT(data: FFTData) {
 
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
+      // Backpressure check: skip slow clients to prevent memory explosion
+      if (client.bufferedAmount < MAX_BUFFERED_AMOUNT) {
+        client.send(message);
+      } else {
+        // Track dropped frames for diagnostics
+        const drops = (clientDropCounts.get(client) || 0) + 1;
+        clientDropCounts.set(client, drops);
+
+        // Log every 100 drops to avoid log spam
+        if (drops % 100 === 0) {
+          console.warn(`[WebSocket] Dropped ${drops} frames for slow client (buffer: ${client.bufferedAmount} bytes)`);
+        }
+      }
     }
   });
 }

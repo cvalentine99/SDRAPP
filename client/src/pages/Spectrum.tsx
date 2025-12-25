@@ -106,11 +106,13 @@ export default function Spectrum() {
           </CardHeader>
           <CardContent className="h-[calc(100%-3.5rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-primary/30 overflow-hidden">
-              <SpectrographDisplay 
-                width={1024} 
-                height={150} 
-                fftSize={2048} 
+              <SpectrographDisplay
+                width={1024}
+                height={150}
+                fftSize={2048}
                 fftData={fftData?.fftData || null}
+                centerFreq={fftData?.centerFreq || parseFloat(frequency) * 1e6}
+                sampleRate={fftData?.sampleRate || 10e6}
               />
             </div>
           </CardContent>
