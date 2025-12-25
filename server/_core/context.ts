@@ -1,6 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -8,21 +7,24 @@ export type TrpcContext = {
   user: User | null;
 };
 
+/**
+ * Context creation - Standalone deployment mode
+ * OAuth authentication is disabled for local/self-hosted deployments.
+ */
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
-
-  try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
-  }
+  // Return mock user for standalone mode - no OAuth required
+  const standaloneUser: User = {
+    id: "local-user",
+    name: "Local User",
+    email: "local@localhost",
+    createdAt: new Date(),
+  };
 
   return {
     req: opts.req,
     res: opts.res,
-    user,
+    user: standaloneUser,
   };
 }

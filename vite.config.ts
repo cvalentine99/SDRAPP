@@ -1,13 +1,11 @@
-import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import fs from "node:fs";
 import path from "path";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
-
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+// Removed @builder.io/vite-plugin-jsx-loc - not installed
+const plugins = [react(), tailwindcss(), vitePluginManusRuntime()];
 
 export default defineConfig({
   plugins,
@@ -37,8 +35,9 @@ export default defineConfig({
       "127.0.0.1",
     ],
     hmr: {
-      clientPort: 443,
-      protocol: "wss",
+      // Use default HMR settings for local development
+      // WSS/443 config removed - was causing issues in standalone mode
+      overlay: false, // Disable error overlay to prevent flickering on transient errors
     },
     fs: {
       strict: true,

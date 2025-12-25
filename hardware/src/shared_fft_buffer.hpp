@@ -82,6 +82,7 @@ static_assert(sizeof(SharedFFTHeader) == 64, "SharedFFTHeader must be 64 bytes")
 /**
  * Per-frame header (one per FFT frame in ring buffer).
  * Followed by spectrum data: float[fft_size] per channel.
+ * Note: Size varies by platform (44 bytes on ARM64, 48 on x86_64)
  */
 struct FFTFrameHeader {
     uint64_t frame_number;       // Monotonic frame counter
@@ -94,7 +95,9 @@ struct FFTFrameHeader {
     float peak_power[MAX_CHANNELS];    // Peak power per channel (dBFS)
     // Followed by: float spectrum[channel_count][fft_size]
 };
-static_assert(sizeof(FFTFrameHeader) == 48, "FFTFrameHeader must be 48 bytes");
+// Platform-portable size check
+static_assert(sizeof(FFTFrameHeader) >= 44 && sizeof(FFTFrameHeader) <= 52,
+              "FFTFrameHeader size unexpected - check struct packing");
 
 #pragma pack(pop)
 

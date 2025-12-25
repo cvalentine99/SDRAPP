@@ -2,7 +2,12 @@ import { EventEmitter } from "events";
 import { spawn, ChildProcess } from "child_process";
 import * as net from "net";
 import path from "path";
+import { fileURLToPath } from "url";
 import { SharedMemoryReader, FFTFrame } from "./shared-memory-reader";
+
+// ES module compatibility shim for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ============================================================================
 // Configuration
@@ -474,7 +479,8 @@ export class ProductionHardwareManager extends EventEmitter {
   }
 
   private async spawnSDRStreamer(): Promise<void> {
-    const binPath = path.resolve(__dirname, "../hardware/bin/sdr_streamer");
+    // Binary is in hardware/build/ after compilation, not hardware/bin/
+    const binPath = path.resolve(__dirname, "../hardware/build/sdr_streamer");
 
     console.log("[ProductionHW] Spawning sdr_streamer:", binPath);
     console.log("[ProductionHW] Config:", {
