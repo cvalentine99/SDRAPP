@@ -109,13 +109,68 @@ echo "Step 8: Downloading UHD FPGA images..."
 $SUDO uhd_images_downloader -t b2xx
 
 echo ""
-echo "Step 9: Configuring USB permissions for B210..."
+echo "Step 9: Installing SoapySDR (Universal SDR Interface)..."
+echo "This enables support for RTL-SDR, HackRF, LimeSDR, and other devices."
+
+if command -v SoapySDRUtil &> /dev/null; then
+  SOAPY_VERSION=$(SoapySDRUtil --info 2>&1 | grep "Lib Version" | head -1 || echo "Unknown")
+  echo "✅ SoapySDR already installed: $SOAPY_VERSION"
+else
+  echo "Installing SoapySDR from apt..."
+  $SUDO apt-get install -y libsoapysdr-dev soapysdr-tools
+  echo "✅ SoapySDR installed"
+fi
+
+echo ""
+echo "Step 10: Installing SoapySDR device modules..."
+echo "(Optional: Install only the modules for hardware you own)"
+echo ""
+read -p "Install RTL-SDR support? (y/N): " INSTALL_RTL
+if [[ "$INSTALL_RTL" =~ ^[Yy]$ ]]; then
+  $SUDO apt-get install -y soapysdr-module-rtlsdr rtl-sdr
+  echo "✅ RTL-SDR support installed"
+fi
+
+read -p "Install HackRF support? (y/N): " INSTALL_HACKRF
+if [[ "$INSTALL_HACKRF" =~ ^[Yy]$ ]]; then
+  $SUDO apt-get install -y soapysdr-module-hackrf hackrf
+  echo "✅ HackRF support installed"
+fi
+
+read -p "Install LimeSDR support? (y/N): " INSTALL_LIME
+if [[ "$INSTALL_LIME" =~ ^[Yy]$ ]]; then
+  $SUDO apt-get install -y soapysdr-module-lms7 limesuite
+  echo "✅ LimeSDR support installed"
+fi
+
+read -p "Install Airspy support? (y/N): " INSTALL_AIRSPY
+if [[ "$INSTALL_AIRSPY" =~ ^[Yy]$ ]]; then
+  $SUDO apt-get install -y soapysdr-module-airspy airspy
+  echo "✅ Airspy support installed"
+fi
+
+echo ""
+echo "Step 11: Configuring USB permissions for SDR devices..."
 $SUDO tee /etc/udev/rules.d/uhd-usrp.rules > /dev/null <<EOF
 # USRP B200/B210 USB permissions
 SUBSYSTEM=="usb", ATTR{idVendor}=="2500", ATTR{idProduct}=="0020", MODE="0666"
 SUBSYSTEM=="usb", ATTR{idVendor}=="2500", ATTR{idProduct}=="0021", MODE="0666"
 SUBSYSTEM=="usb", ATTR{idVendor}=="2500", ATTR{idProduct}=="0022", MODE="0666"
 SUBSYSTEM=="usb", ATTR{idVendor}=="3923", ATTR{idProduct}=="7813", MODE="0666"
+
+# RTL-SDR USB permissions
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="2832", MODE="0666"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="2838", MODE="0666"
+
+# HackRF USB permissions
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6089", MODE="0666"
+
+# LimeSDR USB permissions
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6108", MODE="0666"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{idProduct}=="601f", MODE="0666"
+
+# Airspy USB permissions
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="60a1", MODE="0666"
 EOF
 
 echo "Reloading udev rules..."
@@ -131,14 +186,17 @@ echo "Installed packages:"
 echo "  - Build tools (gcc, g++, cmake)"
 echo "  - Boost libraries (all components)"
 echo "  - FFTW3 (FFT computation)"
-echo "  - UHD (USRP Hardware Driver)"
+echo "  - UHD (USRP Hardware Driver - Ettus B210, X310, etc.)"
+echo "  - SoapySDR (Universal SDR interface)"
+echo "  - SoapySDR modules (RTL-SDR, HackRF, LimeSDR, Airspy - as selected)"
 echo "  - JSON libraries (nlohmann-json)"
 echo ""
 echo "Next steps:"
-echo "  1. Connect your Ettus B210 to USB 3.0 port"
-echo "  2. Run: uhd_find_devices"
-echo "  3. Run: uhd_usrp_probe --args='type=b200'"
-echo "  4. Compile C++ daemons: cd build && cmake .. && make -j\$(nproc)"
+echo "  1. Connect your SDR hardware (B210, RTL-SDR, HackRF, etc.) to USB port"
+echo "  2. Test UHD devices: uhd_find_devices"
+echo "  3. Test SoapySDR devices: SoapySDRUtil --find"
+echo "  4. Probe specific device: uhd_usrp_probe --args='type=b200'"
+echo "  5. Compile C++ daemons: cd build && cmake .. && make -j\$(nproc)"
 echo ""
 echo "For troubleshooting, see: hardware/BUILD_INSTRUCTIONS.md"
 echo "=================================="

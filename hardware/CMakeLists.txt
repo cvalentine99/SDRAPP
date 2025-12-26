@@ -5,7 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find required packages
-find_package(UHD REQUIRED)
+find_package(UHD)
+find_package(SoapySDR NO_MODULE)
 find_package(Boost REQUIRED COMPONENTS program_options system thread)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFTW3F REQUIRED fftw3f)
@@ -40,8 +41,41 @@ target_link_libraries(freq_scanner
     ${FFTW3F_LIBRARIES}
 )
 
-# Install targets
-install(TARGETS sdr_streamer iq_recorder freq_scanner DESTINATION bin)
+# SoapySDR-based executables (RTL-SDR, HackRF, LimeSDR, etc.)
+if(SoapySDR_FOUND)
+    message(STATUS "SoapySDR found, building SoapySDR daemons")
+    
+    add_executable(soapy_streamer src/soapy_streamer.cpp)
+    target_link_libraries(soapy_streamer
+        ${SoapySDR_LIBRARIES}
+        ${FFTW3F_LIBRARIES}
+    )
+    
+    add_executable(soapy_scanner src/soapy_scanner.cpp)
+    target_link_libraries(soapy_scanner
+        ${SoapySDR_LIBRARIES}
+        ${FFTW3F_LIBRARIES}
+    )
+    
+    add_executable(soapy_recorder src/soapy_recorder.cpp)
+    target_link_libraries(soapy_recorder
+        ${SoapySDR_LIBRARIES}
+    )
+    
+    install(TARGETS soapy_streamer soapy_scanner soapy_recorder DESTINATION bin)
+    message(STATUS "SoapySDR libraries: ${SoapySDR_LIBRARIES}")
+else()
+    message(WARNING "SoapySDR not found, skipping SoapySDR daemons")
+endif()
+
+# Install UHD targets
+if(UHD_FOUND)
+    install(TARGETS sdr_streamer iq_recorder freq_scanner DESTINATION bin)
+endif()
+
+if(NOT UHD_FOUND AND NOT SoapySDR_FOUND)
+    message(FATAL_ERROR "Neither UHD nor SoapySDR found. Install at least one SDR library.")
+endif()
 
 # Print configuration
 message(STATUS "UHD version: ${UHD_VERSION}")

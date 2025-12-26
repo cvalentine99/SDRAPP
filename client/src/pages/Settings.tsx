@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Settings as SettingsIcon, Radio, Server, Database, Wifi } from "lucide-react";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { DeviceSelector } from "./DeviceSelector";
 
 export default function Settings() {
   const [sdrMode, setSdrMode] = useState<"demo" | "production">("demo");
@@ -49,6 +50,9 @@ export default function Settings() {
       </div>
 
       <Separator />
+
+      {/* Device Selection */}
+      <DeviceSelector />
 
       {/* SDR Mode Configuration */}
       <Card>

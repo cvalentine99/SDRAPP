@@ -485,3 +485,39 @@
 - [x] All 38 tests passing
 - [x] TypeScript compilation successful
 - [ ] Test OptimizedSpectrograph in Spectrum page (manual UI test)
+
+
+## SoapySDR Support (Dec 24, 2025)
+
+### C++ Daemon Implementation
+- [x] Create soapy_streamer.cpp for real-time FFT streaming
+- [x] Create soapy_scanner.cpp for frequency scanning
+- [x] Create soapy_recorder.cpp for IQ recording
+- [x] Add device enumeration and selection logic
+- [x] Update CMakeLists.txt to build SoapySDR daemons
+- [x] Add SoapySDR library linking (conditional build)
+
+### Backend Integration
+- [x] Add deviceList.listDevices endpoint to enumerate all SDR hardware
+- [x] Add deviceList.getSelectedDevice endpoint
+- [x] Add deviceList.setSelectedDevice mutation
+- [x] Create device_enumerator.cpp for hardware detection
+- [ ] Update production-hardware.ts to spawn correct daemon based on backend
+- [ ] Update device.getInfo to support SoapySDR devices
+- [ ] Test with real SoapySDR hardware
+
+### Frontend UI
+- [x] Add device selection UI in Settings page (DeviceSelector component)
+- [x] Display detected devices with driver info and backend badges
+- [x] Add device selection with radio buttons
+- [x] Show currently active device
+- [ ] Add device-specific configuration options (future)
+- [ ] Update Device page to show current device info (future)
+
+### Deployment
+- [x] Update install_dependencies.sh to include SoapySDR
+- [x] Add SoapySDR module installation (rtl-sdr, hackrf, limesuite, airspy)
+- [x] Add USB permissions for all supported devices
+- [x] Update CMakeLists.txt to build device_enumerator
+- [ ] Update deployment documentation
+- [ ] Test with real hardware (B210, RTL-SDR, HackRF, etc.)
