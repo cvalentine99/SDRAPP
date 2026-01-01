@@ -23,6 +23,7 @@ import {
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { SentryStatusWidget } from "@/components/SentryStatusWidget";
+import { logger } from "@/lib/logger";
 
 export default function Device() {
   const [dcOffsetCorrection, setDcOffsetCorrection] = useState(true);
@@ -39,18 +40,18 @@ export default function Device() {
   
   // Mutations
   const setFrequencyMutation = trpc.device.setFrequency.useMutation({
-    onSuccess: () => console.log("Frequency updated"),
-    onError: (error) => console.error("Error:", error.message),
+    onSuccess: () => logger.device.info("Frequency updated"),
+    onError: (error) => logger.device.error("Failed to set frequency", { error: error.message }),
   });
   
   const setGainMutation = trpc.device.setGain.useMutation({
-    onSuccess: () => console.log("Gain updated"),
-    onError: (error) => console.error("Error:", error.message),
+    onSuccess: () => logger.device.info("Gain updated"),
+    onError: (error) => logger.device.error("Failed to set gain", { error: error.message }),
   });
   
   const setSampleRateMutation = trpc.device.setSampleRate.useMutation({
-    onSuccess: () => console.log("Sample rate updated"),
-    onError: (error) => console.error("Error:", error.message),
+    onSuccess: () => logger.device.info("Sample rate updated"),
+    onError: (error) => logger.device.error("Failed to set sample rate", { error: error.message }),
   });
 
   return (

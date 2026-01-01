@@ -21,6 +21,7 @@ import {
   logRecordingDelete,
   logNavigation,
 } from "@/lib/breadcrumbs";
+import { logger } from "@/lib/logger";
 
 export default function Recording() {
   // Log page navigation on mount
@@ -72,7 +73,7 @@ export default function Recording() {
   // Mutations
   const startRecording = trpc.recording.start.useMutation({
     onSuccess: () => {
-      console.log("Recording started");
+      logger.recording.info("Recording started", { frequency, sampleRate, gain, duration });
       logRecordingStart({
         frequency,
         sampleRate,
@@ -82,16 +83,16 @@ export default function Recording() {
       setIsRecording(true);
       refetch();
     },
-    onError: (error) => console.error("Failed to start recording:", error.message),
+    onError: (error) => logger.recording.error("Failed to start recording", { error: error.message }),
   });
   
   const deleteRecording = trpc.recording.delete.useMutation({
     onSuccess: (_, variables) => {
-      console.log("Recording deleted");
+      logger.recording.info("Recording deleted");
       logRecordingDelete(String(variables.id));
       refetch();
     },
-    onError: (error) => console.error("Failed to delete recording:", error.message),
+    onError: (error) => logger.recording.error("Failed to delete recording", { error: error.message }),
   });
   
   const handleStartRecording = () => {

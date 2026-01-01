@@ -25,6 +25,7 @@ import {
   logWebSocketStatus,
   logNavigation,
 } from "@/lib/breadcrumbs";
+import { logger } from "@/lib/logger";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
@@ -59,18 +60,18 @@ export default function Spectrum() {
       const freqHz = parseFloat(frequency) * 1e6;
       logFrequencyChange(freqHz, prevFrequencyRef.current, "input");
       prevFrequencyRef.current = freqHz;
-      console.log("Frequency updated to", frequency, "MHz");
+      logger.spectrum.info("Frequency updated", { frequency: parseFloat(frequency), unit: "MHz" });
     },
-    onError: (error) => console.error("Failed to set frequency:", error.message),
+    onError: (error) => logger.spectrum.error("Failed to set frequency", { error: error.message }),
   });
   
   const setGainMutation = trpc.device.setGain.useMutation({
     onSuccess: () => {
       logGainChange(gain[0], prevGainRef.current, "slider");
       prevGainRef.current = gain[0];
-      console.log("Gain updated to", gain[0], "dB");
+      logger.spectrum.info("Gain updated", { gain: gain[0], unit: "dB" });
     },
-    onError: (error) => console.error("Failed to set gain:", error.message),
+    onError: (error) => logger.spectrum.error("Failed to set gain", { error: error.message }),
   });
   
   // Debounced handlers
@@ -97,7 +98,7 @@ export default function Spectrum() {
     logStreamingChange(newState ? "start" : "stop", {
       frequency: parseFloat(frequency) * 1e6,
     });
-    console.log(isRunning ? "Stopping FFT streaming" : "Starting FFT streaming");
+    logger.spectrum.info(newState ? "Starting FFT streaming" : "Stopping FFT streaming");
   }, [isRunning, frequency]);
 
   return (

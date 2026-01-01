@@ -633,7 +633,7 @@
 - [x] Fix Recording.tsx memory leak - use React state for interval
 - [x] Implement scan cancellation with AbortController
 - [x] Create structured logging utility
-- [x] Replace console.log calls with logger (key files updated)
+- [x] Replace console.log/error calls with logger (all client files updated)
 
 
 ## Scan Progress & Logging Features (Jan 1, 2026)

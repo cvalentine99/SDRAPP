@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,26 +70,26 @@ export function FrequencyBookmarks({
       setIsAddDialogOpen(false);
       setNewBookmarkName("");
       setNewBookmarkDescription("");
-      console.log("Bookmark saved");
+      logger.bookmarks.info("Bookmark saved", { name: newBookmarkName });
     },
     onError: (error) => {
-      console.error("Failed to save bookmark:", error.message);
+      logger.bookmarks.error("Failed to save bookmark", { error: error.message });
     },
   });
 
   const deleteBookmark = trpc.bookmark.delete.useMutation({
     onSuccess: () => {
       refetchBookmarks();
-      console.log("Bookmark deleted");
+      logger.bookmarks.info("Bookmark deleted");
     },
     onError: (error) => {
-      console.error("Failed to delete bookmark:", error.message);
+      logger.bookmarks.error("Failed to delete bookmark", { error: error.message });
     },
   });
 
   const handleAddBookmark = () => {
     if (!newBookmarkName.trim()) {
-      console.error("Name required");
+      logger.bookmarks.warn("Bookmark name required");
       return;
     }
 
@@ -103,7 +104,7 @@ export function FrequencyBookmarks({
 
   const handleSelectBookmark = (bookmark: BookmarkData) => {
     onSelectBookmark(bookmark.frequency, bookmark.sampleRate, bookmark.gain);
-    console.log(`Tuned to ${bookmark.name}: ${formatFrequency(bookmark.frequency)}`);
+    logger.bookmarks.info("Tuned to bookmark", { name: bookmark.name, frequency: bookmark.frequency });
   };
 
   const handleDeleteBookmark = (id: number) => {

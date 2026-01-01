@@ -51,7 +51,10 @@ export function initSentry() {
     },
   });
 
-  console.log("[Sentry] Client-side error tracking initialized");
+  // Sentry initialization logged via debug level
+  if (import.meta.env.DEV) {
+    console.debug("[Sentry] Client-side error tracking initialized");
+  }
 }
 
 /**

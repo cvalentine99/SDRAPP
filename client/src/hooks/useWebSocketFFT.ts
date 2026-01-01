@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { sdrSpans } from "@/lib/sentry";
+import { logger } from "@/lib/logger";
 
 interface FFTData {
   timestamp: number;
@@ -41,7 +42,7 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log("[WebSocket] Connected to FFT stream");
+        logger.websocket.info("Connected to FFT stream");
         setIsConnected(true);
         setConnectionStatus("connected");
         reconnectAttemptsRef.current = 0;
@@ -78,18 +79,18 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
             }
           }
         } catch (error) {
-          console.error("[WebSocket] Failed to parse message:", error);
+          logger.websocket.error("Failed to parse message", { error: String(error) });
         } finally {
           endSpan();
         }
       };
 
       ws.onerror = (error) => {
-        console.error("[WebSocket] Error:", error);
+        logger.websocket.error("WebSocket error");
       };
 
       ws.onclose = () => {
-        console.log("[WebSocket] Disconnected from FFT stream");
+        logger.websocket.info("Disconnected from FFT stream");
         setIsConnected(false);
         setConnectionStatus("disconnected");
         wsRef.current = null;
@@ -104,7 +105,7 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
         }, delay);
       };
     } catch (error) {
-      console.error("[WebSocket] Connection failed:", error);
+      logger.websocket.error("Connection failed", { error: String(error) });
       setConnectionStatus("disconnected");
     }
   }, []);
