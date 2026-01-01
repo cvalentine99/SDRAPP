@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `spectrumSnapshots` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `userId` int DEFAULT NULL,\n  `frequency` bigint NOT NULL,\n  `sampleRate` bigint NOT NULL,\n  `gain` int NOT NULL,\n  `signalType` varchar(100) DEFAULT NULL,\n  `peakPower` int DEFAULT NULL,\n  `noiseFloor` int DEFAULT NULL,\n  `snr` int DEFAULT NULL,\n  `bandwidth` bigint DEFAULT NULL,\n  `confidence` int DEFAULT NULL,\n  `metadata` text,\n  `source` enum('manual','auto','scan') DEFAULT 'auto',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_frequency` (`frequency`),\n  KEY `idx_userId` (`userId`),\n  KEY `idx_createdAt` (`createdAt`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user D8P1hPzTB2gvSDs.f108342b4ab9 --database k8cenWLKBCTASVHYzFafGP --execute CREATE TABLE IF NOT EXISTS `spectrumSnapshots` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `userId` int DEFAULT NULL,\n  `frequency` bigint NOT NULL,\n  `sampleRate` bigint NOT NULL,\n  `gain` int NOT NULL,\n  `signalType` varchar(100) DEFAULT NULL,\n  `peakPower` int DEFAULT NULL,\n  `noiseFloor` int DEFAULT NULL,\n  `snr` int DEFAULT NULL,\n  `bandwidth` bigint DEFAULT NULL,\n  `confidence` int DEFAULT NULL,\n  `metadata` text,\n  `source` enum('manual','auto','scan') DEFAULT 'auto',\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  KEY `idx_frequency` (`frequency`),\n  KEY `idx_userId` (`userId`),\n  KEY `idx_createdAt` (`createdAt`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 183
+}

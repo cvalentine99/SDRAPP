@@ -109,3 +109,40 @@ export const aiMessages = mysqlTable("aiMessages", {
 
 export type AIMessage = typeof aiMessages.$inferSelect;
 export type InsertAIMessage = typeof aiMessages.$inferInsert;
+
+
+/**
+ * Spectrum Snapshots - stores point-in-time spectrum analysis data
+ * Used for historical comparison, trend analysis, and anomaly detection
+ */
+export const spectrumSnapshots = mysqlTable("spectrumSnapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  /** User who captured this snapshot (null for system/automated captures) */
+  userId: int("userId"),
+  /** Center frequency in Hz */
+  frequency: bigint("frequency", { mode: "number" }).notNull(),
+  /** Sample rate in SPS */
+  sampleRate: bigint("sampleRate", { mode: "number" }).notNull(),
+  /** Gain setting in dB (0-76) */
+  gain: int("gain").notNull(),
+  /** Identified signal type (e.g., "WiFi 2.4GHz", "FM Radio", "Unknown") */
+  signalType: varchar("signalType", { length: 100 }),
+  /** Peak power level in dBm */
+  peakPower: int("peakPower"),
+  /** Noise floor level in dBm */
+  noiseFloor: int("noiseFloor"),
+  /** Signal-to-noise ratio in dB */
+  snr: int("snr"),
+  /** Estimated bandwidth in Hz */
+  bandwidth: bigint("bandwidth", { mode: "number" }),
+  /** AI confidence score for signal identification (0-100) */
+  confidence: int("confidence"),
+  /** Additional metadata as JSON (FFT peaks, modulation hints, etc.) */
+  metadata: text("metadata"),
+  /** Source of snapshot: manual, auto, scan */
+  source: mysqlEnum("source", ["manual", "auto", "scan"]).default("auto"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SpectrumSnapshot = typeof spectrumSnapshots.$inferSelect;
+export type InsertSpectrumSnapshot = typeof spectrumSnapshots.$inferInsert;

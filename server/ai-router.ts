@@ -3,8 +3,8 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { hardware } from "./hardware";
 import { getDb } from "./db";
-import { aiConversations, aiMessages } from "../drizzle/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { aiConversations, aiMessages, spectrumSnapshots } from "../drizzle/schema";
+import { eq, desc, and, gte, lte, between, sql } from "drizzle-orm";
 
 // Signal forensics knowledge base for RAG
 const SIGNAL_FORENSICS_CONTEXT = `
@@ -436,14 +436,102 @@ export const aiRouter = router({
       }
     }),
 
-  analyzeSpectrum: publicProcedure.query(async () => {
+  analyzeSpectrum: publicProcedure
+    .input(
+      z.object({
+        saveSnapshot: z.boolean().optional().default(false),
+        peakPower: z.number().optional(),
+        noiseFloor: z.number().optional(),
+      }).optional()
+    )
+    .query(async ({ input }) => {
     try {
+      const db = await getDb();
       // Get current SDR configuration
       const config = hardware.getConfig();
       const status = hardware.getStatus();
 
       // Identify signal type based on frequency
       const signalAnalysis = identifySignalType(config.frequency);
+
+      // Calculate SNR if power levels provided
+      const snr = input?.peakPower && input?.noiseFloor
+        ? input.peakPower - input.noiseFloor
+        : null;
+
+      // Query historical snapshots at similar frequency (within 1 MHz)
+      let historicalComparison = null;
+      let recentSnapshots: Array<{
+        id: number;
+        peakPower: number | null;
+        noiseFloor: number | null;
+        signalType: string | null;
+        createdAt: Date;
+      }> = [];
+
+      if (db) {
+        const frequencyTolerance = 1000000; // 1 MHz tolerance
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        recentSnapshots = await db
+          .select({
+            id: spectrumSnapshots.id,
+            peakPower: spectrumSnapshots.peakPower,
+            noiseFloor: spectrumSnapshots.noiseFloor,
+            signalType: spectrumSnapshots.signalType,
+            createdAt: spectrumSnapshots.createdAt,
+          })
+          .from(spectrumSnapshots)
+          .where(
+            and(
+              gte(spectrumSnapshots.frequency, config.frequency - frequencyTolerance),
+              lte(spectrumSnapshots.frequency, config.frequency + frequencyTolerance),
+              gte(spectrumSnapshots.createdAt, oneDayAgo)
+            )
+          )
+          .orderBy(desc(spectrumSnapshots.createdAt))
+          .limit(10);
+
+        // Generate historical comparison if we have data
+        if (recentSnapshots.length > 0 && input?.peakPower) {
+          const avgPeakPower = recentSnapshots
+            .filter((s) => s.peakPower !== null)
+            .reduce((sum, s) => sum + (s.peakPower || 0), 0) / recentSnapshots.filter((s) => s.peakPower !== null).length;
+
+          const powerDelta = input.peakPower - avgPeakPower;
+          const isAnomaly = Math.abs(powerDelta) > 10; // 10 dB threshold
+
+          historicalComparison = {
+            snapshotCount: recentSnapshots.length,
+            avgPeakPower: Math.round(avgPeakPower),
+            currentPeakPower: input.peakPower,
+            powerDelta: Math.round(powerDelta),
+            isAnomaly,
+            anomalyType: isAnomaly
+              ? powerDelta > 0
+                ? "signal_increase"
+                : "signal_decrease"
+              : null,
+            lastSeen: recentSnapshots[0]?.createdAt,
+          };
+        }
+
+        // Save snapshot if requested
+        if (input?.saveSnapshot) {
+          await db.insert(spectrumSnapshots).values({
+            userId: null, // Public procedure, no user context
+            frequency: config.frequency,
+            sampleRate: config.sampleRate,
+            gain: config.gain,
+            signalType: signalAnalysis.type,
+            peakPower: input.peakPower || null,
+            noiseFloor: input.noiseFloor || null,
+            snr: snr || null,
+            confidence: signalAnalysis.confidence,
+            source: "auto",
+          });
+        }
+      }
 
       // Generate contextual insights
       const insights = [
@@ -464,6 +552,15 @@ export const aiRouter = router({
         insights.push("⚠️ PLL not locked - check hardware connection");
       }
 
+      // Add historical insights
+      if (historicalComparison?.isAnomaly) {
+        if (historicalComparison.anomalyType === "signal_increase") {
+          insights.push(`📈 Signal ${historicalComparison.powerDelta} dB stronger than 24h average - new transmitter or interference?`);
+        } else {
+          insights.push(`📉 Signal ${Math.abs(historicalComparison.powerDelta)} dB weaker than 24h average - check antenna or signal source`);
+        }
+      }
+
       return {
         frequency: config.frequency,
         sampleRate: config.sampleRate,
@@ -478,6 +575,8 @@ export const aiRouter = router({
           gpsLock: status.gpsLock,
           pllLock: status.pllLock,
         },
+        historicalComparison,
+        recentSnapshotCount: recentSnapshots.length,
       };
     } catch (error) {
       console.error("Spectrum analysis error:", error);
@@ -797,6 +896,270 @@ export const aiRouter = router({
         console.error("Failed to add message:", error);
         throw new Error(
           `Failed to add message: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * Get historical trend data for a frequency range
+   * Returns power level trends, anomalies, and signal activity over time
+   */
+  getHistoricalTrend: protectedProcedure
+    .input(
+      z.object({
+        frequency: z.number().min(50e6).max(6e9),
+        toleranceHz: z.number().min(100000).max(100000000).optional().default(1000000), // 1 MHz default
+        hoursBack: z.number().min(1).max(168).optional().default(24), // 1 hour to 7 days
+        resolution: z.enum(["minute", "hour", "day"]).optional().default("hour"),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        const startTime = new Date(Date.now() - input.hoursBack * 60 * 60 * 1000);
+
+        // Get all snapshots in the frequency range
+        const snapshots = await db
+          .select({
+            id: spectrumSnapshots.id,
+            frequency: spectrumSnapshots.frequency,
+            peakPower: spectrumSnapshots.peakPower,
+            noiseFloor: spectrumSnapshots.noiseFloor,
+            snr: spectrumSnapshots.snr,
+            signalType: spectrumSnapshots.signalType,
+            confidence: spectrumSnapshots.confidence,
+            createdAt: spectrumSnapshots.createdAt,
+          })
+          .from(spectrumSnapshots)
+          .where(
+            and(
+              gte(spectrumSnapshots.frequency, input.frequency - input.toleranceHz),
+              lte(spectrumSnapshots.frequency, input.frequency + input.toleranceHz),
+              gte(spectrumSnapshots.createdAt, startTime)
+            )
+          )
+          .orderBy(spectrumSnapshots.createdAt);
+
+        if (snapshots.length === 0) {
+          return {
+            frequency: input.frequency,
+            toleranceHz: input.toleranceHz,
+            hoursBack: input.hoursBack,
+            snapshotCount: 0,
+            trend: null,
+            anomalies: [],
+            signalTypes: [],
+            dataPoints: [],
+          };
+        }
+
+        // Calculate statistics
+        const peakPowers = snapshots
+          .filter((s) => s.peakPower !== null)
+          .map((s) => s.peakPower as number);
+
+        const avgPower = peakPowers.length > 0
+          ? peakPowers.reduce((a, b) => a + b, 0) / peakPowers.length
+          : null;
+
+        const minPower = peakPowers.length > 0 ? Math.min(...peakPowers) : null;
+        const maxPower = peakPowers.length > 0 ? Math.max(...peakPowers) : null;
+
+        // Calculate trend (linear regression slope)
+        let trendDirection: "increasing" | "decreasing" | "stable" | null = null;
+        let trendSlope = 0;
+
+        if (peakPowers.length >= 3) {
+          const n = peakPowers.length;
+          const sumX = (n * (n - 1)) / 2;
+          const sumY = peakPowers.reduce((a, b) => a + b, 0);
+          const sumXY = peakPowers.reduce((sum, y, i) => sum + i * y, 0);
+          const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6;
+
+          trendSlope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+
+          if (Math.abs(trendSlope) < 0.1) {
+            trendDirection = "stable";
+          } else if (trendSlope > 0) {
+            trendDirection = "increasing";
+          } else {
+            trendDirection = "decreasing";
+          }
+        }
+
+        // Detect anomalies (values > 2 standard deviations from mean)
+        const anomalies: Array<{
+          timestamp: Date;
+          peakPower: number;
+          deviation: number;
+          type: "spike" | "drop";
+        }> = [];
+
+        if (avgPower !== null && peakPowers.length >= 5) {
+          const variance = peakPowers.reduce((sum, p) => sum + Math.pow(p - avgPower, 2), 0) / peakPowers.length;
+          const stdDev = Math.sqrt(variance);
+          const threshold = 2 * stdDev;
+
+          snapshots.forEach((s) => {
+            if (s.peakPower !== null && avgPower !== null) {
+              const deviation = s.peakPower - avgPower;
+              if (Math.abs(deviation) > threshold) {
+                anomalies.push({
+                  timestamp: s.createdAt,
+                  peakPower: s.peakPower,
+                  deviation: Math.round(deviation),
+                  type: deviation > 0 ? "spike" : "drop",
+                });
+              }
+            }
+          });
+        }
+
+        // Get unique signal types detected
+        const signalTypes = Array.from(new Set(snapshots.map((s) => s.signalType).filter((t): t is string => t !== null)));
+
+        // Aggregate data points based on resolution
+        const dataPoints = snapshots.map((s) => ({
+          timestamp: s.createdAt,
+          peakPower: s.peakPower,
+          noiseFloor: s.noiseFloor,
+          snr: s.snr,
+          signalType: s.signalType,
+        }));
+
+        return {
+          frequency: input.frequency,
+          toleranceHz: input.toleranceHz,
+          hoursBack: input.hoursBack,
+          snapshotCount: snapshots.length,
+          trend: {
+            direction: trendDirection,
+            slope: Math.round(trendSlope * 100) / 100,
+            avgPower: avgPower !== null ? Math.round(avgPower) : null,
+            minPower,
+            maxPower,
+            powerRange: minPower !== null && maxPower !== null ? maxPower - minPower : null,
+          },
+          anomalies,
+          signalTypes,
+          dataPoints,
+        };
+      } catch (error) {
+        console.error("Failed to get historical trend:", error);
+        throw new Error(
+          `Failed to get historical trend: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * Manually save a spectrum snapshot
+   * Allows users to capture specific moments for later comparison
+   */
+  saveSnapshot: protectedProcedure
+    .input(
+      z.object({
+        peakPower: z.number().optional(),
+        noiseFloor: z.number().optional(),
+        bandwidth: z.number().optional(),
+        metadata: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        const config = hardware.getConfig();
+        const signalAnalysis = identifySignalType(config.frequency);
+
+        const snr = input.peakPower && input.noiseFloor
+          ? input.peakPower - input.noiseFloor
+          : null;
+
+        const result = await db.insert(spectrumSnapshots).values({
+          userId: ctx.user.id,
+          frequency: config.frequency,
+          sampleRate: config.sampleRate,
+          gain: config.gain,
+          signalType: signalAnalysis.type,
+          peakPower: input.peakPower || null,
+          noiseFloor: input.noiseFloor || null,
+          snr,
+          bandwidth: input.bandwidth || null,
+          confidence: signalAnalysis.confidence,
+          metadata: input.metadata || null,
+          source: "manual",
+        });
+
+        return {
+          id: Number(result[0].insertId),
+          frequency: config.frequency,
+          signalType: signalAnalysis.type,
+          savedAt: new Date(),
+        };
+      } catch (error) {
+        console.error("Failed to save snapshot:", error);
+        throw new Error(
+          `Failed to save snapshot: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * Get recent snapshots for the current user
+   */
+  listSnapshots: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional().default(20),
+        frequency: z.number().optional(),
+        toleranceHz: z.number().optional().default(1000000),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        let query = db
+          .select({
+            id: spectrumSnapshots.id,
+            frequency: spectrumSnapshots.frequency,
+            sampleRate: spectrumSnapshots.sampleRate,
+            gain: spectrumSnapshots.gain,
+            signalType: spectrumSnapshots.signalType,
+            peakPower: spectrumSnapshots.peakPower,
+            noiseFloor: spectrumSnapshots.noiseFloor,
+            snr: spectrumSnapshots.snr,
+            confidence: spectrumSnapshots.confidence,
+            source: spectrumSnapshots.source,
+            createdAt: spectrumSnapshots.createdAt,
+          })
+          .from(spectrumSnapshots)
+          .where(eq(spectrumSnapshots.userId, ctx.user.id))
+          .orderBy(desc(spectrumSnapshots.createdAt))
+          .limit(input.limit);
+
+        const snapshots = await query;
+
+        return snapshots.map((s) => ({
+          ...s,
+          frequency: Number(s.frequency),
+          sampleRate: Number(s.sampleRate),
+        }));
+      } catch (error) {
+        console.error("Failed to list snapshots:", error);
+        throw new Error(
+          `Failed to list snapshots: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }
     }),

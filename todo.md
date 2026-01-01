@@ -572,3 +572,16 @@
 - [x] Create ai.loadConversation procedure
 - [x] Create ai.deleteConversation procedure
 - [x] Write unit tests for conversation procedures
+
+
+## Historical Analysis Comparison (Jan 1, 2026)
+
+- [x] Add spectrumSnapshots table to database schema
+- [x] Push database migrations for snapshots
+- [x] Extend analyzeSpectrum to save snapshots
+- [x] Query recent snapshots at same frequency
+- [x] Compare current vs historical readings
+- [x] Add ai.getHistoricalTrend procedure
+- [x] Implement power level trend analysis
+- [x] Implement anomaly detection (new signals, interference)
+- [x] Write unit tests for historical analysis
