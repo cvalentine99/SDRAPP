@@ -1,6 +1,7 @@
 import { Server as HTTPServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { getHardwareManager } from "./hardware";
+import { logger } from "./logger";
 
 interface FFTData {
   timestamp: number;
@@ -20,16 +21,16 @@ export function setupWebSocket(server: HTTPServer) {
   });
 
   wss.on("connection", (ws: WebSocket) => {
-    console.log("[WebSocket] Client connected, total clients:", clients.size + 1);
+    logger.websocket.info("Client connected", { totalClients: clients.size + 1 });
     clients.add(ws);
 
     ws.on("close", () => {
-      console.log("[WebSocket] Client disconnected, total clients:", clients.size - 1);
+      logger.websocket.info("Client disconnected", { totalClients: clients.size - 1 });
       clients.delete(ws);
     });
 
     ws.on("error", (error) => {
-      console.error("[WebSocket] Client error:", error.message);
+      logger.websocket.error("Client error", { error: error.message });
       clients.delete(ws);
     });
 
@@ -43,7 +44,7 @@ export function setupWebSocket(server: HTTPServer) {
     broadcastFFT(data);
   });
 
-  console.log("[WebSocket] FFT stream server initialized on /ws/fft");
+  logger.websocket.info("FFT stream server initialized", { path: "/ws/fft" });
 }
 
 export function broadcastFFT(data: FFTData) {

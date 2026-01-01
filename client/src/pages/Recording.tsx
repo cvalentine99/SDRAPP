@@ -13,7 +13,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   logRecordingStart,
@@ -30,6 +30,37 @@ export default function Recording() {
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Cleanup interval on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+        recordingIntervalRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Start recording timer
+  const startRecordingTimer = useCallback(() => {
+    // Clear any existing interval first
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+    }
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingDuration((prev) => prev + 1);
+    }, 1000);
+  }, []);
+  
+  // Stop recording timer
+  const stopRecordingTimer = useCallback(() => {
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+    setRecordingDuration(0);
+  }, []);
   const [frequency, setFrequency] = useState(915e6);
   const [sampleRate, setSampleRate] = useState(10e6);
   const [duration, setDuration] = useState(60);
@@ -148,11 +179,7 @@ export default function Recording() {
                   disabled={isRecording}
                   onClick={() => {
                     setIsRecording(true);
-                    const interval = setInterval(() => {
-                      setRecordingDuration((prev) => prev + 1);
-                    }, 1000);
-                    // Store interval ID for cleanup
-                    (window as any).recordingInterval = interval;
+                    startRecordingTimer();
                   }}
                 >
                   <Play className="w-5 h-5" />
@@ -165,8 +192,7 @@ export default function Recording() {
                   disabled={!isRecording}
                   onClick={() => {
                     setIsRecording(false);
-                    setRecordingDuration(0);
-                    clearInterval((window as any).recordingInterval);
+                    stopRecordingTimer();
                   }}
                 >
                   <Square className="w-5 h-5" />

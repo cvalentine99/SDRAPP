@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Square, Download, Search } from "lucide-react";
+import { Play, Square, Download, Search, XCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast as showToast } from "sonner";
 import {
@@ -40,11 +40,13 @@ export default function Scanner() {
   const [stepFreq, setStepFreq] = useState("1");
   const [gain, setGain] = useState([50]);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
+  const [currentScanId, setCurrentScanId] = useState<string | null>(null);
 
   const scanMutation = trpc.scanner.scan.useMutation({
     onSuccess: (data) => {
       setScanResults(data.results);
       setIsScanning(false);
+      setCurrentScanId(null);
       
       // Log scan completion and detected signals
       const strongSignals = data.results.filter(r => r.power > -70);
@@ -62,8 +64,27 @@ export default function Scanner() {
     },
     onError: (error: { message: string }) => {
       setIsScanning(false);
-      logScannerStop(0);
-      showToast.error(`Scan Failed: ${error.message}`);
+      setCurrentScanId(null);
+      
+      // Don't show error toast for cancelled scans
+      if (error.message.includes("cancelled")) {
+        logScannerStop(0);
+        showToast.info("Scan cancelled");
+      } else {
+        logScannerStop(0);
+        showToast.error(`Scan Failed: ${error.message}`);
+      }
+    },
+  });
+  
+  const cancelMutation = trpc.scanner.cancelScan.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        showToast.info(data.message);
+      }
+    },
+    onError: (error: { message: string }) => {
+      showToast.error(`Cancel failed: ${error.message}`);
     },
   });
 
@@ -85,6 +106,10 @@ export default function Scanner() {
       dwellTime: 100,
     });
 
+    // Generate unique scan ID
+    const scanId = `scan_${Date.now()}`;
+    setCurrentScanId(scanId);
+    
     setIsScanning(true);
     setScanResults([]);
     scanMutation.mutate({
@@ -93,13 +118,17 @@ export default function Scanner() {
       stepSize: step,
       dwellTime: 100,
       gain: gain[0],
+      scanId,
     });
   };
 
   const handleStopScan = () => {
+    if (currentScanId) {
+      cancelMutation.mutate({ scanId: currentScanId });
+    }
     setIsScanning(false);
+    setCurrentScanId(null);
     logScannerStop();
-    // TODO: Implement scan cancellation
   };
 
   const handleExportResults = () => {

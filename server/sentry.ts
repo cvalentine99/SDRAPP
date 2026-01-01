@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { ENV } from "./_core/env";
 import type { Express } from "express";
+import { logger } from "./logger";
 
 /**
  * Initialize Sentry for server-side error tracking
@@ -8,7 +9,7 @@ import type { Express } from "express";
  */
 export function initSentry() {
   if (!ENV.sentryDsn) {
-    console.warn("[Sentry] DSN not configured, error tracking disabled");
+    logger.sentry.warn("DSN not configured, error tracking disabled");
     return;
   }
 
@@ -47,7 +48,7 @@ export function initSentry() {
     },
   });
 
-  console.log("[Sentry] Server-side error tracking initialized");
+  logger.sentry.info("Server-side error tracking initialized");
 }
 
 /**

@@ -1,6 +1,7 @@
 // Simple hardware manager for SDR control
 import { EventEmitter } from "events";
 import { ProductionHardwareManager } from "./production-hardware";
+import { logger } from "./logger";
 
 export interface HardwareConfig {
   frequency: number;
@@ -98,14 +99,14 @@ export function getHardwareManager(): HardwareManager | ProductionHardwareManage
     const sdrMode = process.env.SDR_MODE || "demo";
     
     if (sdrMode === "production") {
-      console.log("[HW-FACTORY] Creating PRODUCTION hardware manager for B210");
+      logger.hardware.info("Creating PRODUCTION hardware manager for B210");
       hardwareInstance = new ProductionHardwareManager();
       // Auto-start production mode
       (hardwareInstance as ProductionHardwareManager).start().catch(err => {
-        console.error("[HW-FACTORY] Failed to start production hardware:", err);
+        logger.hardware.error("Failed to start production hardware", { error: String(err) });
       });
     } else {
-      console.log("[HW-FACTORY] Creating DEMO hardware manager (simulated data)");
+      logger.hardware.info("Creating DEMO hardware manager (simulated data)");
       hardwareInstance = new HardwareManager();
     }
   }
