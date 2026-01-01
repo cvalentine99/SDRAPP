@@ -585,3 +585,14 @@
 - [x] Implement power level trend analysis
 - [x] Implement anomaly detection (new signals, interference)
 - [x] Write unit tests for historical analysis
+
+
+## Sentry Integration (Jan 1, 2026)
+
+- [x] Install @sentry/react and @sentry/node packages
+- [x] Request Sentry DSN from user
+- [x] Configure Sentry for backend (Express/Node.js)
+- [x] Configure Sentry for frontend (React)
+- [x] Add React Error Boundary with Sentry
+- [x] Add test error endpoint for verification
+- [x] Write unit tests for Sentry integration

@@ -25,6 +25,16 @@ export const appRouter = router({
     }),
   }),
 
+  // Test endpoint for Sentry error tracking verification
+  debug: router({
+    testError: publicProcedure.mutation(() => {
+      throw new Error("Test error for Sentry verification - " + new Date().toISOString());
+    }),
+    testMessage: publicProcedure.query(() => {
+      return { message: "Sentry is configured correctly", timestamp: new Date().toISOString() };
+    }),
+  }),
+
   device: deviceRouter,
   deviceList: deviceListRouter,
   telemetry: telemetryRouter,

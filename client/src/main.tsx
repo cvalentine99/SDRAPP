@@ -1,3 +1,7 @@
+// Initialize Sentry first, before any other imports
+import { initSentry, captureException } from "@/lib/sentry";
+initSentry();
+
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -25,6 +29,15 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
+    
+    // Capture API errors to Sentry (skip auth errors)
+    if (error instanceof Error && error.message !== UNAUTHED_ERR_MSG) {
+      captureException(error, {
+        type: "query",
+        queryKey: event.query.queryKey,
+      });
+    }
+    
     console.error("[API Query Error]", error);
   }
 });
@@ -33,6 +46,15 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
+    
+    // Capture API errors to Sentry (skip auth errors)
+    if (error instanceof Error && error.message !== UNAUTHED_ERR_MSG) {
+      captureException(error, {
+        type: "mutation",
+        mutationKey: event.mutation.options.mutationKey,
+      });
+    }
+    
     console.error("[API Mutation Error]", error);
   }
 });
