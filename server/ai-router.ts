@@ -1,7 +1,10 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { hardware } from "./hardware";
+import { getDb } from "./db";
+import { aiConversations, aiMessages } from "../drizzle/schema";
+import { eq, desc, and } from "drizzle-orm";
 
 // Signal forensics knowledge base for RAG
 const SIGNAL_FORENSICS_CONTEXT = `
@@ -483,4 +486,318 @@ export const aiRouter = router({
       );
     }
   }),
+
+  /**
+   * Save a new conversation with messages
+   * Creates conversation and all associated messages in a transaction
+   */
+  saveConversation: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(1).max(200),
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant", "system"]),
+            content: z.string(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        // Get current SDR state for context
+        const config = hardware.getConfig();
+
+        // Generate summary from first user message
+        const firstUserMessage = input.messages.find((m) => m.role === "user");
+        const summary = firstUserMessage
+          ? firstUserMessage.content.slice(0, 200) + (firstUserMessage.content.length > 200 ? "..." : "")
+          : null;
+
+        // Insert conversation
+        const conversationResult = await db.insert(aiConversations).values({
+          userId: ctx.user.id,
+          title: input.title,
+          summary,
+          frequency: config.frequency,
+          sampleRate: config.sampleRate,
+          messageCount: input.messages.length,
+        });
+
+        const conversationId = Number(conversationResult[0].insertId);
+
+        // Insert all messages
+        if (input.messages.length > 0) {
+          const sdrContext = JSON.stringify({
+            frequency: config.frequency,
+            sampleRate: config.sampleRate,
+            gain: config.gain,
+          });
+
+          await db.insert(aiMessages).values(
+            input.messages.map((msg) => ({
+              conversationId,
+              role: msg.role,
+              content: msg.content,
+              sdrContext,
+            }))
+          );
+        }
+
+        return {
+          id: conversationId,
+          title: input.title,
+          messageCount: input.messages.length,
+        };
+      } catch (error) {
+        console.error("Failed to save conversation:", error);
+        throw new Error(
+          `Failed to save conversation: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * List all conversations for the current user
+   * Returns conversations ordered by most recent first
+   */
+  listConversations: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).optional().default(20),
+        offset: z.number().min(0).optional().default(0),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        const conversations = await db
+          .select({
+            id: aiConversations.id,
+            title: aiConversations.title,
+            summary: aiConversations.summary,
+            frequency: aiConversations.frequency,
+            sampleRate: aiConversations.sampleRate,
+            messageCount: aiConversations.messageCount,
+            createdAt: aiConversations.createdAt,
+            updatedAt: aiConversations.updatedAt,
+          })
+          .from(aiConversations)
+          .where(eq(aiConversations.userId, ctx.user.id))
+          .orderBy(desc(aiConversations.updatedAt))
+          .limit(input.limit)
+          .offset(input.offset);
+
+        return conversations.map((conv) => ({
+          ...conv,
+          frequency: conv.frequency ? Number(conv.frequency) : null,
+          sampleRate: conv.sampleRate ? Number(conv.sampleRate) : null,
+        }));
+      } catch (error) {
+        console.error("Failed to list conversations:", error);
+        throw new Error(
+          `Failed to list conversations: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * Load a specific conversation with all messages
+   */
+  loadConversation: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        // Get conversation (verify ownership)
+        const conversationResult = await db
+          .select()
+          .from(aiConversations)
+          .where(
+            and(
+              eq(aiConversations.id, input.conversationId),
+              eq(aiConversations.userId, ctx.user.id)
+            )
+          )
+          .limit(1);
+
+        if (conversationResult.length === 0) {
+          throw new Error("Conversation not found");
+        }
+
+        const conversation = conversationResult[0];
+
+        // Get all messages
+        const messages = await db
+          .select({
+            id: aiMessages.id,
+            role: aiMessages.role,
+            content: aiMessages.content,
+            sdrContext: aiMessages.sdrContext,
+            createdAt: aiMessages.createdAt,
+          })
+          .from(aiMessages)
+          .where(eq(aiMessages.conversationId, input.conversationId))
+          .orderBy(aiMessages.createdAt);
+
+        return {
+          id: conversation.id,
+          title: conversation.title,
+          summary: conversation.summary,
+          frequency: conversation.frequency ? Number(conversation.frequency) : null,
+          sampleRate: conversation.sampleRate ? Number(conversation.sampleRate) : null,
+          messageCount: conversation.messageCount,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt,
+          messages: messages.map((msg) => ({
+            ...msg,
+            sdrContext: msg.sdrContext ? JSON.parse(msg.sdrContext) : null,
+          })),
+        };
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+        throw new Error(
+          `Failed to load conversation: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * Delete a conversation and all its messages
+   */
+  deleteConversation: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        // Verify ownership first
+        const conversationResult = await db
+          .select({ id: aiConversations.id })
+          .from(aiConversations)
+          .where(
+            and(
+              eq(aiConversations.id, input.conversationId),
+              eq(aiConversations.userId, ctx.user.id)
+            )
+          )
+          .limit(1);
+
+        if (conversationResult.length === 0) {
+          throw new Error("Conversation not found");
+        }
+
+        // Delete messages first (foreign key constraint)
+        await db
+          .delete(aiMessages)
+          .where(eq(aiMessages.conversationId, input.conversationId));
+
+        // Delete conversation
+        await db
+          .delete(aiConversations)
+          .where(eq(aiConversations.id, input.conversationId));
+
+        return { success: true };
+      } catch (error) {
+        console.error("Failed to delete conversation:", error);
+        throw new Error(
+          `Failed to delete conversation: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
+
+  /**
+   * Add a message to an existing conversation
+   */
+  addMessage: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error("Database not available");
+      }
+
+      try {
+        // Verify ownership
+        const conversationResult = await db
+          .select({ id: aiConversations.id, messageCount: aiConversations.messageCount })
+          .from(aiConversations)
+          .where(
+            and(
+              eq(aiConversations.id, input.conversationId),
+              eq(aiConversations.userId, ctx.user.id)
+            )
+          )
+          .limit(1);
+
+        if (conversationResult.length === 0) {
+          throw new Error("Conversation not found");
+        }
+
+        // Get current SDR context
+        const config = hardware.getConfig();
+        const sdrContext = JSON.stringify({
+          frequency: config.frequency,
+          sampleRate: config.sampleRate,
+          gain: config.gain,
+        });
+
+        // Insert message
+        const messageResult = await db.insert(aiMessages).values({
+          conversationId: input.conversationId,
+          role: input.role,
+          content: input.content,
+          sdrContext,
+        });
+
+        // Update conversation message count and timestamp
+        await db
+          .update(aiConversations)
+          .set({
+            messageCount: (conversationResult[0].messageCount || 0) + 1,
+          })
+          .where(eq(aiConversations.id, input.conversationId));
+
+        return {
+          id: Number(messageResult[0].insertId),
+          conversationId: input.conversationId,
+          role: input.role,
+        };
+      } catch (error) {
+        console.error("Failed to add message:", error);
+        throw new Error(
+          `Failed to add message: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
+    }),
 });

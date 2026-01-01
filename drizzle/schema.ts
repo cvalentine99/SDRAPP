@@ -66,3 +66,46 @@ export const frequencyBookmarks = mysqlTable("frequencyBookmarks", {
 
 export type FrequencyBookmark = typeof frequencyBookmarks.$inferSelect;
 export type InsertFrequencyBookmark = typeof frequencyBookmarks.$inferInsert;
+
+/**
+ * AI Conversations - stores chat sessions for spectrum analysis
+ * Each conversation can contain multiple messages and captures SDR context
+ */
+export const aiConversations = mysqlTable("aiConversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** Auto-generated or user-defined title for the conversation */
+  title: varchar("title", { length: 200 }).notNull(),
+  /** Summary of the conversation topic (auto-generated from first message) */
+  summary: text("summary"),
+  /** SDR frequency at conversation start (Hz) */
+  frequency: bigint("frequency", { mode: "number" }),
+  /** SDR sample rate at conversation start */
+  sampleRate: bigint("sampleRate", { mode: "number" }),
+  /** Number of messages in conversation (denormalized for performance) */
+  messageCount: int("messageCount").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AIConversation = typeof aiConversations.$inferSelect;
+export type InsertAIConversation = typeof aiConversations.$inferInsert;
+
+/**
+ * AI Messages - individual messages within a conversation
+ * Stores both user queries and AI responses
+ */
+export const aiMessages = mysqlTable("aiMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull(),
+  /** Message role: user, assistant, or system */
+  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  /** Message content (can be long for AI responses) */
+  content: text("content").notNull(),
+  /** SDR state snapshot at message time (JSON) */
+  sdrContext: text("sdrContext"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AIMessage = typeof aiMessages.$inferSelect;
+export type InsertAIMessage = typeof aiMessages.$inferInsert;

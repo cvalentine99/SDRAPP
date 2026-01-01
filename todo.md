@@ -105,7 +105,7 @@
 - [ ] User preferences storage
 - [ ] Recording metadata database schema
 - [x] Frequency bookmark storage
-- [ ] AI conversation history storage
+- [x] AI conversation history storage
 - [ ] Performance metrics logging
 
 ## Testing & Quality
@@ -560,3 +560,15 @@
 - [x] WebSocket HMR failures are side effect of rate limiting
 - [ ] Browser testing after rate limit cooldown period
 
+
+
+## AI Conversation History Storage (Jan 1, 2026)
+
+- [x] Add aiConversations table to database schema
+- [x] Add aiMessages table to database schema
+- [x] Push database migrations
+- [x] Create ai.saveConversation procedure
+- [x] Create ai.listConversations procedure
+- [x] Create ai.loadConversation procedure
+- [x] Create ai.deleteConversation procedure
+- [x] Write unit tests for conversation procedures
