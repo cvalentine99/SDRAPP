@@ -31,7 +31,7 @@
 - [x] 3D visualization of B210 hardware (if feasible)
 - [x] Frequency tuning controls with numeric input
 - [ ] Velocity-aware frequency dragging
-- [ ] Frequency bookmark system for presets
+- [x] Frequency bookmark system for presets
 - [x] Sample rate selection dropdown
 - [x] Master Clock Rate (MCR) configuration (20.0, 30.72, 56.0 MHz)
 - [x] Clock source selection (Internal, External, GPSDO)
@@ -76,7 +76,7 @@
 - [ ] Binary data streaming handler
 - [ ] Automatic reconnection logic
 - [ ] Backpressure handling
-- [ ] Connection status indicator
+- [x] Connection status indicator
 - [ ] Data rate monitoring
 - [ ] Error handling and recovery
 
@@ -104,7 +104,7 @@
 - [ ] Device configuration persistence
 - [ ] User preferences storage
 - [ ] Recording metadata database schema
-- [ ] Frequency bookmark storage
+- [x] Frequency bookmark storage
 - [ ] AI conversation history storage
 - [ ] Performance metrics logging
 

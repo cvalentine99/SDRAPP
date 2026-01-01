@@ -38,3 +38,31 @@ export const recordings = mysqlTable("recordings", {
 
 export type Recording = typeof recordings.$inferSelect;
 export type InsertRecording = typeof recordings.$inferInsert;
+
+/**
+ * Frequency bookmarks for quick access to commonly used frequencies
+ * Users can save their favorite frequencies with custom names and settings
+ */
+export const frequencyBookmarks = mysqlTable("frequencyBookmarks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** User-defined name for the bookmark (e.g., "FM Radio", "WiFi 2.4GHz") */
+  name: varchar("name", { length: 100 }).notNull(),
+  /** Center frequency in Hz */
+  frequency: bigint("frequency", { mode: "number" }).notNull(),
+  /** Sample rate in SPS */
+  sampleRate: bigint("sampleRate", { mode: "number" }).notNull(),
+  /** Gain in dB (0-76) */
+  gain: int("gain").notNull(),
+  /** Optional description or notes */
+  description: text("description"),
+  /** Color for UI display (hex code) */
+  color: varchar("color", { length: 7 }).default("#00d4ff"),
+  /** Display order for sorting */
+  sortOrder: int("sortOrder").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FrequencyBookmark = typeof frequencyBookmarks.$inferSelect;
+export type InsertFrequencyBookmark = typeof frequencyBookmarks.$inferInsert;
