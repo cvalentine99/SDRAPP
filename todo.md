@@ -644,3 +644,12 @@
 - [x] Add log filtering by level and category
 - [x] Add LOG_ENABLED environment variable support
 - [x] Make logging configurable without code changes
+
+
+## Gain Staging Presets (Jan 1, 2026)
+
+- [x] Create gain preset definitions (low noise, max sensitivity, wideband scan, narrowband, satellite)
+- [x] Create GainPresets component with preset buttons
+- [x] Add apply preset logic with tRPC mutations
+- [x] Integrate presets into Device page
+- [x] Add toast notifications for preset application

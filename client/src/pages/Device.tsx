@@ -23,6 +23,7 @@ import {
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { SentryStatusWidget } from "@/components/SentryStatusWidget";
+import { GainPresets, QuickPresetButtons } from "@/components/GainPresets";
 import { logger } from "@/lib/logger";
 
 export default function Device() {
@@ -291,11 +292,14 @@ export default function Device() {
           {/* Gain Staging */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Zap className="w-4 h-4 text-secondary" />
-                <span className="neon-glow-cyan text-secondary">
-                  GAIN STAGING
-                </span>
+              <CardTitle className="text-sm flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-secondary" />
+                  <span className="neon-glow-cyan text-secondary">
+                    GAIN STAGING
+                  </span>
+                </div>
+                <GainPresets variant="button" />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -308,6 +312,12 @@ export default function Device() {
                   checked={agcMode}
                   onCheckedChange={setAgcMode}
                 />
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="p-3 bg-black/30 rounded border border-border">
+                <Label className="text-xs text-muted-foreground mb-2 block">Quick Presets</Label>
+                <QuickPresetButtons />
               </div>
 
               {!agcMode && (
