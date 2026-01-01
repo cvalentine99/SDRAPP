@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { GlobalAIChat } from "./GlobalAIChat";
+import { FeedbackButton } from "./FeedbackButton";
 
 interface SDRLayoutProps {
   children: React.ReactNode;
@@ -92,8 +93,11 @@ export function SDRLayout({ children }: SDRLayoutProps) {
             })}
           </nav>
 
-          {/* User Profile */}
+          {/* User Profile & Feedback */}
           <div className="flex items-center gap-4">
+            {/* Feedback Button - Always visible */}
+            <FeedbackButton />
+            
             {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

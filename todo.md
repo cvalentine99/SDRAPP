@@ -617,3 +617,12 @@
 - [x] Add performance spans for file uploads
 - [x] Create Sentry dashboard widget component
 - [x] Add error count API endpoint
+
+
+## Sentry Widget & Feedback (Jan 1, 2026)
+
+- [x] Add SentryStatusWidget to Device page
+- [x] Connect getSentryStats to real Sentry API
+- [x] Create user feedback button component
+- [x] Capture session replay URL in feedback
+- [x] Add feedback form modal

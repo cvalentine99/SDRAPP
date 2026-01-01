@@ -1,4 +1,4 @@
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME } from "../shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
@@ -10,6 +10,8 @@ import { settingsRouter } from "./settings-router";
 import { aiRouter } from "./ai-router";
 import { deviceListRouter } from "./device-list-router";
 import { bookmarkRouter } from "./bookmark-router";
+import { fetchSentryStats, submitSentryFeedback } from "./sentry-api";
+import { z } from "zod";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -33,31 +35,21 @@ export const appRouter = router({
     testMessage: publicProcedure.query(() => {
       return { message: "Sentry is configured correctly", timestamp: new Date().toISOString() };
     }),
-    getSentryStats: publicProcedure.query(() => {
-      // In a production environment, this would call the Sentry API
-      // For now, return simulated stats based on application state
-      const now = Date.now();
-      const lastErrorTime = null; // Would be fetched from Sentry API
-      const unresolvedErrors = 0; // Would be fetched from Sentry API
-      const totalErrors = 0; // Would be fetched from Sentry API
-      const errorRate = 0; // Calculated from recent errors
-      
-      // Determine status based on error metrics
-      let status: "healthy" | "warning" | "critical" = "healthy";
-      if (unresolvedErrors > 10 || errorRate > 5) {
-        status = "critical";
-      } else if (unresolvedErrors > 3 || errorRate > 1) {
-        status = "warning";
-      }
-      
-      return {
-        totalErrors,
-        unresolvedErrors,
-        lastErrorTime,
-        errorRate,
-        status,
-      };
+    getSentryStats: publicProcedure.query(async () => {
+      // Fetch real stats from Sentry API (or simulated if not configured)
+      return fetchSentryStats();
     }),
+    submitFeedback: publicProcedure
+      .input(z.object({
+        eventId: z.string(),
+        name: z.string(),
+        email: z.string().email(),
+        comments: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const success = await submitSentryFeedback(input);
+        return { success };
+      }),
   }),
 
   device: deviceRouter,

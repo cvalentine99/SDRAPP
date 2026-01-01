@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { SentryStatusWidget } from "@/components/SentryStatusWidget";
 
 export default function Device() {
   const [dcOffsetCorrection, setDcOffsetCorrection] = useState(true);
@@ -212,6 +213,9 @@ export default function Device() {
               </div>
             </CardContent>
           </Card>
+          
+          {/* Sentry Error Monitoring Widget */}
+          <SentryStatusWidget />
         </div>
 
         {/* Configuration Panels */}
