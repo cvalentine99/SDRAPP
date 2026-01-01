@@ -57,6 +57,13 @@
       "when": 1766588424366,
       "tag": "0007_tense_aaron_stack",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1767293507403,
+      "tag": "0008_plain_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }

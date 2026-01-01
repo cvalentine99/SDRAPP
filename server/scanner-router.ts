@@ -1,94 +1,150 @@
-import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+/**
+ * Scanner Router - Matches API Contract exactly
+ * @see shared/api-contracts.ts for contract definitions
+ */
+
+import { router, protectedProcedure } from "./_core/trpc";
 import { spawn } from "child_process";
 import path from "path";
-
-interface ScanResult {
-  frequency: number;
-  peak_power_dbm: number;
-}
+import {
+  ScanInputSchema,
+  type ScanResponse,
+  type ScanResult,
+} from "../shared/api-contracts";
 
 export const scannerRouter = router({
-  scan: publicProcedure
-    .input(
-      z.object({
-        startFreq: z.number(),
-        stopFreq: z.number(),
-        stepFreq: z.number(),
-        gain: z.number(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const { startFreq, stopFreq, stepFreq, gain } = input;
+  /**
+   * Execute frequency scan
+   * @input ScanInput
+   * @returns ScanResponse
+   */
+  scan: protectedProcedure
+    .input(ScanInputSchema)
+    .mutation(async ({ input }): Promise<ScanResponse> => {
+      const { startFreq, stopFreq, stepSize, dwellTime, gain } = input;
+      const sdrMode = process.env.SDR_MODE || "demo";
 
-      // For demo mode, return simulated scan results
-      const isDemoMode = process.env.SDR_MODE === "demo";
-      
-      if (isDemoMode) {
-        // Generate simulated scan results
-        const results: ScanResult[] = [];
-        for (let freq = startFreq; freq <= stopFreq; freq += stepFreq) {
-          // Simulate peaks at 915 MHz and 925 MHz
-          let power = -90 + Math.random() * 10; // Base noise floor
+      const startTime = Date.now();
+
+      if (sdrMode === "production") {
+        // Production mode: spawn freq_scanner binary
+        return new Promise((resolve, reject) => {
+          const binPath = path.resolve(__dirname, "../hardware/bin/freq_scanner");
           
-          if (Math.abs(freq - 915e6) < 2e6) {
-            power = -40 + Math.random() * 5; // Strong signal at 915 MHz
-          } else if (Math.abs(freq - 925e6) < 1e6) {
-            power = -55 + Math.random() * 5; // Weaker signal at 925 MHz
-          }
+          const scanner = spawn(binPath, [
+            "--start", startFreq.toString(),
+            "--stop", stopFreq.toString(),
+            "--step", stepSize.toString(),
+            "--dwell", dwellTime.toString(),
+            "--gain", gain.toString(),
+          ]);
+
+          let output = "";
           
-          results.push({
-            frequency: freq,
-            peak_power_dbm: power,
+          scanner.stdout.on("data", (data) => {
+            output += data.toString();
           });
-        }
-        
-        // Simulate scan delay
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        
-        return { results };
+
+          scanner.stderr.on("data", (data) => {
+            console.error("[Scanner] stderr:", data.toString());
+          });
+
+          scanner.on("close", (code) => {
+            if (code !== 0) {
+              reject(new Error(`Scanner exited with code ${code}`));
+              return;
+            }
+
+            try {
+              const results = parseScannerOutput(output);
+              const endTime = Date.now();
+              
+              const peakResult = results.reduce((max, r) => r.power > max.power ? r : max, results[0]);
+              const avgPower = results.reduce((sum, r) => sum + r.power, 0) / results.length;
+
+              resolve({
+                results,
+                startTime,
+                endTime,
+                peakFrequency: peakResult?.frequency || startFreq,
+                peakPower: peakResult?.power || -100,
+                averagePower: avgPower,
+              });
+            } catch (error) {
+              reject(error);
+            }
+          });
+
+          scanner.on("error", (error) => {
+            reject(error);
+          });
+        });
       }
 
-      // Production mode: Use freq_scanner daemon
-      return new Promise<{ results: ScanResult[] }>((resolve, reject) => {
-        const scannerPath = path.join(__dirname, "../hardware/bin/freq_scanner");
+      // Demo mode: generate simulated scan results
+      const results: ScanResult[] = [];
+      const numSteps = Math.floor((stopFreq - startFreq) / stepSize) + 1;
+
+      for (let i = 0; i < numSteps; i++) {
+        const freq = startFreq + i * stepSize;
         
-        const args = [
-          "--start", startFreq.toString(),
-          "--stop", stopFreq.toString(),
-          "--step", stepFreq.toString(),
-          "--gain", gain.toString(),
-        ];
+        // Simulate noise floor with occasional signals
+        let power = -95 + Math.random() * 10; // Noise floor
+        
+        // Add simulated signals at specific frequencies
+        if (Math.abs(freq - 915e6) < 2e6) {
+          power = -45 + Math.random() * 5; // Strong signal at 915 MHz
+        } else if (Math.abs(freq - 925e6) < 1e6) {
+          power = -55 + Math.random() * 5; // Medium signal at 925 MHz
+        } else if (Math.abs(freq - 902e6) < 500e3) {
+          power = -65 + Math.random() * 5; // Weak signal at 902 MHz
+        }
 
-        const scanner = spawn(scannerPath, args);
-        let output = "";
-        let errorOutput = "";
-
-        scanner.stdout.on("data", (data) => {
-          output += data.toString();
+        results.push({
+          frequency: freq,
+          power,
+          timestamp: startTime + i * (dwellTime || 100),
         });
+      }
 
-        scanner.stderr.on("data", (data) => {
-          errorOutput += data.toString();
-        });
+      // Simulate scan delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        scanner.on("close", (code) => {
-          if (code !== 0) {
-            reject(new Error(`Scanner failed: ${errorOutput}`));
-            return;
-          }
+      const endTime = Date.now();
+      const peakResult = results.reduce((max, r) => r.power > max.power ? r : max, results[0]);
+      const avgPower = results.reduce((sum, r) => sum + r.power, 0) / results.length;
 
-          try {
-            const results: ScanResult[] = JSON.parse(output);
-            resolve({ results });
-          } catch (error) {
-            reject(new Error(`Failed to parse scanner output: ${error}`));
-          }
-        });
-
-        scanner.on("error", (error) => {
-          reject(new Error(`Failed to spawn scanner: ${error.message}`));
-        });
-      });
+      return {
+        results,
+        startTime,
+        endTime,
+        peakFrequency: peakResult?.frequency || startFreq,
+        peakPower: peakResult?.power || -100,
+        averagePower: avgPower,
+      };
     }),
 });
+
+function parseScannerOutput(output: string): ScanResult[] {
+  const results: ScanResult[] = [];
+  const lines = output.split("\n");
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+
+    try {
+      const data = JSON.parse(line);
+      if (data.frequency !== undefined && data.power !== undefined) {
+        results.push({
+          frequency: data.frequency,
+          power: data.power,
+          timestamp: data.timestamp || Date.now(),
+        });
+      }
+    } catch {
+      // Skip non-JSON lines
+    }
+  }
+
+  return results;
+}

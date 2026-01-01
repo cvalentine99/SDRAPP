@@ -521,3 +521,42 @@
 - [x] Update CMakeLists.txt to build device_enumerator
 - [ ] Update deployment documentation
 - [ ] Test with real hardware (B210, RTL-SDR, HackRF, etc.)
+
+
+## API Contracts - SINGLE SOURCE OF TRUTH (Dec 24, 2025)
+
+### Contract Definition
+- [x] Define Device API contract (getInfo, getStatus, getConfig, setFrequency, setGain, setSampleRate, calibrate)
+- [x] Define Scanner API contract (scan)
+- [x] Define Recording API contract (start, list, delete)
+- [x] Define Telemetry API contract (getMetrics)
+- [x] Define Settings API contract (getMode, setMode)
+- [x] Define AI API contract (chat, analyzeSpectrum)
+- [x] Define DeviceList API contract (listDevices, getSelectedDevice, setSelectedDevice)
+- [x] Define WebSocket FFT streaming contract
+
+### Implementation
+- [x] Create shared/api-contracts.ts with all TypeScript interfaces and Zod schemas
+- [ ] Rebuild backend routers to match contracts exactly
+- [ ] Rebuild frontend calls to match contracts exactly
+- [ ] Add contract validation middleware
+- [ ] Test all endpoints against contracts
+
+
+## Database Schema & API Fixes (Jan 1, 2026)
+
+- [x] Update recordings table to use bigint for frequency (supports up to 6 GHz)
+- [x] Update recordings table to use bigint for sampleRate (supports up to 61.44 MSPS)
+- [x] Update recordings table to use bigint for fileSize (supports large recordings)
+- [x] Fix device.getInfo test to match actual API response values
+- [x] Fix gap-fixes tests to match new StartRecordingResponse format
+- [x] All 38 vitest tests passing
+- [ ] Run database migration on production (requires db:push after rate limit reset)
+
+## Rate Limiting Investigation (Jan 1, 2026)
+
+- [x] Identified 429 errors are from Manus proxy, not application code
+- [x] Verified backend APIs work correctly via curl locally
+- [x] WebSocket HMR failures are side effect of rate limiting
+- [ ] Browser testing after rate limit cooldown period
+

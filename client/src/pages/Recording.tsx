@@ -336,7 +336,7 @@ export default function Recording() {
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-primary" />
                         <span className="text-sm font-mono text-foreground">
-                          {recording.filePath.split('/').pop()}
+                          {recording.s3Url?.split('/').pop() || recording.filename}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">

@@ -6,6 +6,9 @@ export interface HardwareConfig {
   frequency: number;
   sampleRate: number;
   gain: number;
+  antenna: string;
+  clockSource: "internal" | "external" | "gpsdo";
+  agcEnabled: boolean;
 }
 
 export interface HardwareStatus {
@@ -28,6 +31,9 @@ export class ProductionHardwareManager extends EventEmitter {
     frequency: 915e6,
     sampleRate: 10e6,
     gain: 50,
+    antenna: "TX/RX",
+    clockSource: "internal",
+    agcEnabled: false,
   };
 
   private status: HardwareStatus = {

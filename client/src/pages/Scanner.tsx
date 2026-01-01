@@ -17,7 +17,8 @@ import { toast as showToast } from "sonner";
 
 interface ScanResult {
   frequency: number;
-  peak_power_dbm: number;
+  power: number;
+  timestamp: number;
 }
 
 export default function Scanner() {
@@ -30,10 +31,10 @@ export default function Scanner() {
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
 
   const scanMutation = trpc.scanner.scan.useMutation({
-    onSuccess: (data: { results: ScanResult[] }) => {
+    onSuccess: (data) => {
       setScanResults(data.results);
       setIsScanning(false);
-      showToast.success(`Scan Complete: ${data.results.length} frequencies`);
+      showToast.success(`Scan Complete: ${data.results.length} frequencies, Peak: ${(data.peakFrequency / 1e6).toFixed(2)} MHz @ ${data.peakPower.toFixed(1)} dBm`);
     },
     onError: (error: { message: string }) => {
       setIsScanning(false);
@@ -56,7 +57,8 @@ export default function Scanner() {
     scanMutation.mutate({
       startFreq: start,
       stopFreq: stop,
-      stepFreq: step,
+      stepSize: step,
+      dwellTime: 100,
       gain: gain[0],
     });
   };
@@ -78,7 +80,7 @@ export default function Scanner() {
   };
 
   const maxPower = scanResults.length > 0
-    ? Math.max(...scanResults.map((r) => r.peak_power_dbm))
+    ? Math.max(...scanResults.map((r) => r.power))
     : -100;
 
   return (
@@ -126,7 +128,7 @@ export default function Scanner() {
                         points={scanResults
                           .map((r, i) => {
                             const x = (i / (scanResults.length - 1)) * 100;
-                            const y = 100 - ((r.peak_power_dbm + 100) / 100) * 100;
+                            const y = 100 - ((r.power + 100) / 100) * 100;
                             return `${x},${y}`;
                           })
                           .join(" ")}
@@ -137,9 +139,9 @@ export default function Scanner() {
                       />
                       {/* Peak markers */}
                       {scanResults.map((r, i) => {
-                        if (r.peak_power_dbm === maxPower) {
+                        if (r.power === maxPower) {
                           const x = (i / (scanResults.length - 1)) * 100;
-                          const y = 100 - ((r.peak_power_dbm + 100) / 100) * 100;
+                          const y = 100 - ((r.power + 100) / 100) * 100;
                           return (
                             <circle
                               key={`peak-${i}`}
@@ -174,7 +176,7 @@ export default function Scanner() {
                           <tr
                             key={i}
                             className={`border-b border-border/50 ${
-                              result.peak_power_dbm === maxPower
+                              result.power === maxPower
                                 ? "bg-secondary/20"
                                 : ""
                             }`}
@@ -184,12 +186,12 @@ export default function Scanner() {
                             </td>
                             <td
                               className={`p-2 text-right ${
-                                result.peak_power_dbm === maxPower
+                                result.power === maxPower
                                   ? "text-secondary font-bold"
                                   : "text-primary"
                               }`}
                             >
-                              {result.peak_power_dbm.toFixed(1)}
+                              {result.power.toFixed(1)}
                             </td>
                           </tr>
                         ))}
@@ -368,7 +370,7 @@ export default function Scanner() {
                 <span className="text-muted-foreground">Peak Frequency</span>
                 <span className="font-mono text-secondary">
                   {scanResults.length > 0
-                    ? (scanResults.find((r) => r.peak_power_dbm === maxPower)
+                    ? (scanResults.find((r) => r.power === maxPower)
                         ?.frequency! / 1e6).toFixed(2)
                     : "N/A"}{" "}
                   MHz

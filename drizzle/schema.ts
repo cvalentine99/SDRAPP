@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, bigint, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -28,11 +28,11 @@ export type InsertUser = typeof users.$inferInsert;
 export const recordings = mysqlTable("recordings", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  frequency: int("frequency").notNull(),
-  sampleRate: int("sampleRate").notNull(),
-  duration: int("duration").notNull(),
+  frequency: bigint("frequency", { mode: "number" }).notNull(), // Hz - can be up to 6 GHz
+  sampleRate: bigint("sampleRate", { mode: "number" }).notNull(), // SPS - can be up to 61.44 MSPS
+  duration: int("duration").notNull(), // seconds
   filePath: text("filePath").notNull(),
-  fileSize: int("fileSize").notNull(),
+  fileSize: bigint("fileSize", { mode: "number" }).notNull(), // bytes - can be very large
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

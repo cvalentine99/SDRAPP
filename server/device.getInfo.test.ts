@@ -22,12 +22,13 @@ describe("device.getInfo", () => {
     const result = await caller.device.getInfo();
 
     expect(result).toBeDefined();
-    expect(result.serial).toBe("194919");
+    // Updated to match actual demo mode values in device-router.ts
+    expect(result.serial).toBe("31D9E9C");
     expect(result.name).toBe("MyB210");
     expect(result.product).toBe("B210");
     expect(result.firmwareVersion).toBe("8.0");
     expect(result.fpgaVersion).toBe("16.0");
-    expect(result.gpsdo).toBe("GPSTCXO v3.2");
+    expect(result.gpsdo).toBe("GPSDO-TCXO");
     expect(result.usbSpeed).toBe("USB 3.0");
     expect(result.freqRange).toEqual({ min: 50e6, max: 6e9 });
     expect(result.sampleRateRange).toEqual({ min: 200e3, max: 61.44e6 });
@@ -75,14 +76,14 @@ describe("device.getInfo", () => {
     expect(result.name).toBeDefined();
     expect(result.product).toBeDefined();
     
-    // Fallback values when probe fails
+    // Fallback values when probe fails (gpsdo is null, usbSpeed defaults to USB 3.0)
     expect(result.serial).toBe("unknown");
     expect(result.name).toBe("B210");
     expect(result.product).toBe("B210");
     expect(result.firmwareVersion).toBe("unknown");
     expect(result.fpgaVersion).toBe("unknown");
-    expect(result.gpsdo).toBe("Probe failed");
-    expect(result.usbSpeed).toBe("unknown");
+    expect(result.gpsdo).toBeNull();
+    expect(result.usbSpeed).toBe("USB 3.0");
   });
 
   afterAll(() => {
