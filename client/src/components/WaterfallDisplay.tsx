@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useEffect, useState } from "react";
+import { sdrSpans } from "@/lib/sentry";
 
 interface WaterfallDisplayProps {
   width?: number;
@@ -209,9 +210,14 @@ export function WaterfallDisplay({
       setYOffset(currentRow / height);
     };
 
-    // Render loop
+    // Render loop with performance tracking (sampled to avoid overhead)
+    let frameCount = 0;
     const render = () => {
       if (!gl || !program) return;
+
+      // Track render performance every 60 frames (approximately once per second)
+      const shouldTrack = frameCount % 60 === 0;
+      const endSpan = shouldTrack ? sdrSpans.waterfallRender() : null;
 
       // Update with new data (60 FPS)
       simulateData();
@@ -225,6 +231,9 @@ export function WaterfallDisplay({
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+      if (endSpan) endSpan();
+      frameCount++;
 
       animationFrameRef.current = requestAnimationFrame(render);
     };

@@ -606,3 +606,14 @@
 - [x] Add breadcrumbs for recording actions
 - [x] Add breadcrumbs for scanner actions
 - [x] Add breadcrumbs for device configuration changes
+
+
+## Sentry Client Integration (Jan 1, 2026)
+
+- [x] Integrate breadcrumbs into Spectrum page
+- [x] Integrate breadcrumbs into Scanner page
+- [x] Integrate breadcrumbs into Recording page
+- [x] Add performance spans for FFT processing
+- [x] Add performance spans for file uploads
+- [x] Create Sentry dashboard widget component
+- [x] Add error count API endpoint

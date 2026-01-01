@@ -13,10 +13,21 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import {
+  logRecordingStart,
+  logRecordingStop,
+  logRecordingDelete,
+  logNavigation,
+} from "@/lib/breadcrumbs";
 
 export default function Recording() {
+  // Log page navigation on mount
+  useEffect(() => {
+    logNavigation("Recording");
+  }, []);
+  
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [frequency, setFrequency] = useState(915e6);
@@ -31,6 +42,12 @@ export default function Recording() {
   const startRecording = trpc.recording.start.useMutation({
     onSuccess: () => {
       console.log("Recording started");
+      logRecordingStart({
+        frequency,
+        sampleRate,
+        gain,
+        duration,
+      });
       setIsRecording(true);
       refetch();
     },
@@ -38,8 +55,9 @@ export default function Recording() {
   });
   
   const deleteRecording = trpc.recording.delete.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       console.log("Recording deleted");
+      logRecordingDelete(String(variables.id));
       refetch();
     },
     onError: (error) => console.error("Failed to delete recording:", error.message),

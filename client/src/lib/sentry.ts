@@ -91,6 +91,81 @@ export function startTransaction(name: string, op: string) {
   return Sentry.startInactiveSpan({ name, op });
 }
 
+/**
+ * Start a performance span for tracking operation duration
+ * Returns a function to end the span
+ */
+export function startSpan(name: string, op: string): () => void {
+  const span = Sentry.startInactiveSpan({ name, op });
+  return () => span?.end();
+}
+
+/**
+ * Wrap an async operation with performance tracking
+ */
+export async function withSpan<T>(
+  name: string,
+  op: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  return Sentry.startSpan({ name, op }, async () => {
+    return fn();
+  });
+}
+
+/**
+ * Wrap a sync operation with performance tracking
+ */
+export function withSpanSync<T>(
+  name: string,
+  op: string,
+  fn: () => T
+): T {
+  return Sentry.startSpanManual({ name, op }, (span) => {
+    try {
+      const result = fn();
+      span.end();
+      return result;
+    } catch (error) {
+      span.setStatus({ code: 2, message: String(error) });
+      span.end();
+      throw error;
+    }
+  });
+}
+
+/**
+ * SDR-specific performance spans
+ */
+export const sdrSpans = {
+  /** Track FFT processing time */
+  fftProcessing: (binCount: number) => startSpan(`FFT Processing (${binCount} bins)`, "sdr.fft"),
+  
+  /** Track waterfall rendering time */
+  waterfallRender: () => startSpan("Waterfall Render", "sdr.render.waterfall"),
+  
+  /** Track spectrograph rendering time */
+  spectrographRender: () => startSpan("Spectrograph Render", "sdr.render.spectrograph"),
+  
+  /** Track file upload time */
+  fileUpload: (filename: string, size: number) => 
+    startSpan(`Upload ${filename} (${(size / 1024 / 1024).toFixed(2)} MB)`, "sdr.upload"),
+  
+  /** Track scan operation time */
+  scanOperation: (startFreq: number, stopFreq: number) => 
+    startSpan(`Scan ${(startFreq / 1e6).toFixed(1)}-${(stopFreq / 1e6).toFixed(1)} MHz`, "sdr.scan"),
+  
+  /** Track recording operation time */
+  recordingOperation: (duration: number) => 
+    startSpan(`Recording ${duration}s`, "sdr.recording"),
+  
+  /** Track AI analysis time */
+  aiAnalysis: () => startSpan("AI Spectrum Analysis", "sdr.ai.analysis"),
+  
+  /** Track WebSocket message processing */
+  wsMessageProcess: () => startSpan("WebSocket Message", "sdr.websocket"),
+};
+
 // Re-export Sentry components for React integration
 export const SentryErrorBoundary = Sentry.ErrorBoundary;
 export const withProfiler = Sentry.withProfiler;

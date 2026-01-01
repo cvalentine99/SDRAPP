@@ -12,12 +12,19 @@ import {
 } from "@/components/ui/select";
 import { Pause, Play, Radio } from "lucide-react";
 import { WebSocketStatus } from "@/components/WebSocketStatus";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { WaterfallDisplay } from "@/components/WaterfallDisplay";
 import { SpectrographDisplay } from "@/components/SpectrographDisplay";
 import { trpc } from "@/lib/trpc";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { useWebSocketFFT } from "@/hooks/useWebSocketFFT";
+import {
+  logFrequencyChange,
+  logGainChange,
+  logStreamingChange,
+  logWebSocketStatus,
+  logNavigation,
+} from "@/lib/breadcrumbs";
 
 export default function Spectrum() {
   const [isRunning, setIsRunning] = useState(false);
@@ -33,13 +40,36 @@ export default function Spectrum() {
   });
   
   // Mutations
+  // Track previous values for breadcrumbs
+  const prevFrequencyRef = useRef<number | undefined>(undefined);
+  const prevGainRef = useRef<number | undefined>(undefined);
+  
+  // Log page navigation on mount
+  useEffect(() => {
+    logNavigation("Spectrum");
+  }, []);
+  
+  // Log WebSocket status changes
+  useEffect(() => {
+    logWebSocketStatus(connectionStatus as "connecting" | "connected" | "disconnected" | "error");
+  }, [connectionStatus]);
+  
   const setFrequencyMutation = trpc.device.setFrequency.useMutation({
-    onSuccess: () => console.log("Frequency updated to", frequency, "MHz"),
+    onSuccess: () => {
+      const freqHz = parseFloat(frequency) * 1e6;
+      logFrequencyChange(freqHz, prevFrequencyRef.current, "input");
+      prevFrequencyRef.current = freqHz;
+      console.log("Frequency updated to", frequency, "MHz");
+    },
     onError: (error) => console.error("Failed to set frequency:", error.message),
   });
   
   const setGainMutation = trpc.device.setGain.useMutation({
-    onSuccess: () => console.log("Gain updated to", gain[0], "dB"),
+    onSuccess: () => {
+      logGainChange(gain[0], prevGainRef.current, "slider");
+      prevGainRef.current = gain[0];
+      console.log("Gain updated to", gain[0], "dB");
+    },
     onError: (error) => console.error("Failed to set gain:", error.message),
   });
   
@@ -62,9 +92,13 @@ export default function Spectrum() {
   });
   
   const handleStartStop = useCallback(() => {
-    setIsRunning(!isRunning);
+    const newState = !isRunning;
+    setIsRunning(newState);
+    logStreamingChange(newState ? "start" : "stop", {
+      frequency: parseFloat(frequency) * 1e6,
+    });
     console.log(isRunning ? "Stopping FFT streaming" : "Starting FFT streaming");
-  }, [isRunning]);
+  }, [isRunning, frequency]);
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4 p-4">

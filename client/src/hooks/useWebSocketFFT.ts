@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { sdrSpans } from "@/lib/sentry";
 
 interface FFTData {
   timestamp: number;
@@ -47,10 +48,16 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
       };
 
       ws.onmessage = (event) => {
+        // Track WebSocket message processing performance
+        const endSpan = sdrSpans.wsMessageProcess();
+        
         try {
           const message = JSON.parse(event.data);
           
           if (message.type === "fft") {
+            // Track FFT data processing
+            const endFftSpan = sdrSpans.fftProcessing(message.fftData?.length || 0);
+            
             setFFTData({
               timestamp: message.timestamp,
               centerFreq: message.centerFreq,
@@ -58,6 +65,8 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
               fftSize: message.fftSize,
               fftData: message.fftData
             });
+            
+            endFftSpan();
 
             // Update FPS counter
             fpsCounterRef.current.count++;
@@ -70,6 +79,8 @@ export function useWebSocketFFT(): UseWebSocketFFTReturn {
           }
         } catch (error) {
           console.error("[WebSocket] Failed to parse message:", error);
+        } finally {
+          endSpan();
         }
       };
 

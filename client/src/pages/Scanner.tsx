@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,12 @@ import {
 import { Play, Square, Download, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast as showToast } from "sonner";
+import {
+  logScannerStart,
+  logScannerStop,
+  logSignalDetected,
+  logNavigation,
+} from "@/lib/breadcrumbs";
 
 interface ScanResult {
   frequency: number;
@@ -22,6 +28,11 @@ interface ScanResult {
 }
 
 export default function Scanner() {
+  // Log page navigation on mount
+  useEffect(() => {
+    logNavigation("Scanner");
+  }, []);
+  
   // Using sonner toast
   const [isScanning, setIsScanning] = useState(false);
   const [startFreq, setStartFreq] = useState("900");
@@ -34,10 +45,24 @@ export default function Scanner() {
     onSuccess: (data) => {
       setScanResults(data.results);
       setIsScanning(false);
+      
+      // Log scan completion and detected signals
+      const strongSignals = data.results.filter(r => r.power > -70);
+      logScannerStop(strongSignals.length);
+      
+      // Log each strong signal detected
+      strongSignals.forEach(signal => {
+        logSignalDetected({
+          frequency: signal.frequency,
+          power: signal.power,
+        });
+      });
+      
       showToast.success(`Scan Complete: ${data.results.length} frequencies, Peak: ${(data.peakFrequency / 1e6).toFixed(2)} MHz @ ${data.peakPower.toFixed(1)} dBm`);
     },
     onError: (error: { message: string }) => {
       setIsScanning(false);
+      logScannerStop(0);
       showToast.error(`Scan Failed: ${error.message}`);
     },
   });
@@ -52,6 +77,14 @@ export default function Scanner() {
       return;
     }
 
+    // Log scan start
+    logScannerStart({
+      startFrequency: start,
+      endFrequency: stop,
+      stepSize: step,
+      dwellTime: 100,
+    });
+
     setIsScanning(true);
     setScanResults([]);
     scanMutation.mutate({
@@ -65,6 +98,7 @@ export default function Scanner() {
 
   const handleStopScan = () => {
     setIsScanning(false);
+    logScannerStop();
     // TODO: Implement scan cancellation
   };
 

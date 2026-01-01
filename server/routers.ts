@@ -33,6 +33,31 @@ export const appRouter = router({
     testMessage: publicProcedure.query(() => {
       return { message: "Sentry is configured correctly", timestamp: new Date().toISOString() };
     }),
+    getSentryStats: publicProcedure.query(() => {
+      // In a production environment, this would call the Sentry API
+      // For now, return simulated stats based on application state
+      const now = Date.now();
+      const lastErrorTime = null; // Would be fetched from Sentry API
+      const unresolvedErrors = 0; // Would be fetched from Sentry API
+      const totalErrors = 0; // Would be fetched from Sentry API
+      const errorRate = 0; // Calculated from recent errors
+      
+      // Determine status based on error metrics
+      let status: "healthy" | "warning" | "critical" = "healthy";
+      if (unresolvedErrors > 10 || errorRate > 5) {
+        status = "critical";
+      } else if (unresolvedErrors > 3 || errorRate > 1) {
+        status = "warning";
+      }
+      
+      return {
+        totalErrors,
+        unresolvedErrors,
+        lastErrorTime,
+        errorRate,
+        status,
+      };
+    }),
   }),
 
   device: deviceRouter,
