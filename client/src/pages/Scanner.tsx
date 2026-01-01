@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Play, Square, Download, Search, XCircle } from "lucide-react";
+import { ScanProgressIndicator } from "@/components/ScanProgressIndicator";
 import { trpc } from "@/lib/trpc";
 import { toast as showToast } from "sonner";
 import {
@@ -160,7 +161,20 @@ export default function Scanner() {
           </CardHeader>
           <CardContent className="h-[calc(100%-4rem)]">
             <div className="w-full h-full bg-black/80 rounded border border-secondary/30 relative overflow-hidden p-4">
-              {scanResults.length === 0 ? (
+              {isScanning ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-full max-w-md">
+                    <ScanProgressIndicator
+                      scanId={currentScanId}
+                      isScanning={isScanning}
+                      startFreq={parseFloat(startFreq) * 1e6}
+                      stopFreq={parseFloat(stopFreq) * 1e6}
+                      stepSize={parseFloat(stepFreq) * 1e6}
+                      dwellTime={100}
+                    />
+                  </div>
+                </div>
+              ) : scanResults.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <Search className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />

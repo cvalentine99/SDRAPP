@@ -6,9 +6,12 @@
  * - Structured metadata
  * - Environment-aware output (disabled in production unless explicitly enabled)
  * - Sentry integration for errors
+ * - In-memory log storage for log viewer
  */
 
 import * as Sentry from "@sentry/node";
+import { addLogEntry, type LogLevel as StorageLogLevel } from "./log-storage";
+import { ENV } from "./_core/env";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -25,6 +28,8 @@ interface LoggerConfig {
   json: boolean;
   /** Whether logging is enabled */
   enabled: boolean;
+  /** Whether to store logs in memory for log viewer */
+  storeInMemory: boolean;
 }
 
 const LOG_LEVELS: Record<LogLevel, number> = {
@@ -34,12 +39,13 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-// Default configuration based on environment
+// Default configuration based on environment variables
 const defaultConfig: LoggerConfig = {
-  minLevel: process.env.NODE_ENV === "production" ? "warn" : "debug",
+  minLevel: ENV.logLevel || (ENV.isProduction ? "warn" : "debug"),
   timestamps: true,
-  json: process.env.NODE_ENV === "production",
-  enabled: process.env.LOG_ENABLED !== "false",
+  json: ENV.isProduction,
+  enabled: ENV.logEnabled,
+  storeInMemory: true, // Always store for log viewer
 };
 
 let config: LoggerConfig = { ...defaultConfig };
@@ -49,6 +55,13 @@ let config: LoggerConfig = { ...defaultConfig };
  */
 export function configureLogger(options: Partial<LoggerConfig>): void {
   config = { ...config, ...options };
+}
+
+/**
+ * Get current logger configuration
+ */
+export function getLoggerConfig(): LoggerConfig {
+  return { ...config };
 }
 
 /**
@@ -94,6 +107,11 @@ function log(
   message: string,
   context?: LogContext
 ): void {
+  // Always store in memory for log viewer (regardless of shouldLog)
+  if (config.storeInMemory) {
+    addLogEntry(level as StorageLogLevel, category, message, context);
+  }
+
   if (!shouldLog(level)) return;
   
   const formatted = formatMessage(level, category, message, context);

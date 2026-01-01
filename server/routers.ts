@@ -11,6 +11,8 @@ import { aiRouter } from "./ai-router";
 import { deviceListRouter } from "./device-list-router";
 import { bookmarkRouter } from "./bookmark-router";
 import { fetchSentryStats, submitSentryFeedback } from "./sentry-api";
+import { getLogs, getCategories, getLogStats, clearLogs, type LogLevel } from "./log-storage";
+import { getLoggerConfig, configureLogger } from "./logger";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -49,6 +51,43 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const success = await submitSentryFeedback(input);
         return { success };
+      }),
+  }),
+
+  // Log viewer endpoints
+  logs: router({
+    list: publicProcedure
+      .input(z.object({
+        level: z.enum(["debug", "info", "warn", "error"]).optional(),
+        category: z.string().optional(),
+        search: z.string().optional(),
+        limit: z.number().min(1).max(500).optional(),
+        offset: z.number().min(0).optional(),
+      }).optional())
+      .query(({ input }) => {
+        return getLogs(input);
+      }),
+    categories: publicProcedure.query(() => {
+      return getCategories();
+    }),
+    stats: publicProcedure.query(() => {
+      return getLogStats();
+    }),
+    clear: publicProcedure.mutation(() => {
+      clearLogs();
+      return { success: true };
+    }),
+    config: publicProcedure.query(() => {
+      return getLoggerConfig();
+    }),
+    setConfig: publicProcedure
+      .input(z.object({
+        minLevel: z.enum(["debug", "info", "warn", "error"]).optional(),
+        enabled: z.boolean().optional(),
+      }))
+      .mutation(({ input }) => {
+        configureLogger(input);
+        return { success: true, config: getLoggerConfig() };
       }),
   }),
 

@@ -634,3 +634,13 @@
 - [x] Implement scan cancellation with AbortController
 - [x] Create structured logging utility
 - [x] Replace console.log calls with logger (key files updated)
+
+
+## Scan Progress & Logging Features (Jan 1, 2026)
+
+- [x] Add scan progress indicator with elapsed time
+- [x] Show estimated completion time during scans
+- [x] Implement log viewer UI in Settings page
+- [x] Add log filtering by level and category
+- [x] Add LOG_ENABLED environment variable support
+- [x] Make logging configurable without code changes

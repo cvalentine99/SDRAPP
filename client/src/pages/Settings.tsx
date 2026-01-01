@@ -9,6 +9,7 @@ import { Settings as SettingsIcon, Radio, Server, Database, Wifi } from "lucide-
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { DeviceSelector } from "./DeviceSelector";
+import { LogViewer } from "@/components/LogViewer";
 
 export default function Settings() {
   const [sdrMode, setSdrMode] = useState<"demo" | "production">("demo");
@@ -155,6 +156,9 @@ export default function Settings() {
           )}
         </CardContent>
       </Card>
+
+      {/* System Logs */}
+      <LogViewer />
 
       {/* Additional Settings (Placeholder) */}
       <Card>
