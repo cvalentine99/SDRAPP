@@ -653,3 +653,11 @@
 - [x] Add apply preset logic with tRPC mutations
 - [x] Integrate presets into Device page
 - [x] Add toast notifications for preset application
+
+
+## Device Selection Persistence (Jan 1, 2026)
+
+- [x] Add device_selections table to database schema
+- [x] Update device-list-router to persist selection to database
+- [x] Add tests for device selection persistence
+- [ ] Push changes to GitHub repository

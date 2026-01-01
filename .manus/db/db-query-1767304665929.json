@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `deviceSelections` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `serial` varchar(64) NOT NULL,\n  `driver` varchar(32),\n  `hardware` varchar(64),\n  `args` varchar(256),\n  `backend` varchar(32),\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `deviceSelections_id` PRIMARY KEY(`id`),\n  CONSTRAINT `deviceSelections_userId_unique` UNIQUE(`userId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user D8P1hPzTB2gvSDs.f108342b4ab9 --database k8cenWLKBCTASVHYzFafGP --execute CREATE TABLE IF NOT EXISTS `deviceSelections` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `serial` varchar(64) NOT NULL,\n  `driver` varchar(32),\n  `hardware` varchar(64),\n  `args` varchar(256),\n  `backend` varchar(32),\n  `createdAt` timestamp NOT NULL DEFAULT (now()),\n  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `deviceSelections_id` PRIMARY KEY(`id`),\n  CONSTRAINT `deviceSelections_userId_unique` UNIQUE(`userId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 241
+}

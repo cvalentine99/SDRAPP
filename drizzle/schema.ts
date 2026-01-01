@@ -146,3 +146,29 @@ export const spectrumSnapshots = mysqlTable("spectrumSnapshots", {
 
 export type SpectrumSnapshot = typeof spectrumSnapshots.$inferSelect;
 export type InsertSpectrumSnapshot = typeof spectrumSnapshots.$inferInsert;
+
+
+/**
+ * Device Selections - stores the currently selected SDR device per user
+ * Persists device selection across sessions
+ */
+export const deviceSelections = mysqlTable("deviceSelections", {
+  id: int("id").autoincrement().primaryKey(),
+  /** User who made this selection */
+  userId: int("userId").notNull().unique(),
+  /** Device serial number */
+  serial: varchar("serial", { length: 64 }).notNull(),
+  /** Device driver (e.g., "b200", "x300") */
+  driver: varchar("driver", { length: 32 }),
+  /** Device hardware type (e.g., "B210", "X310") */
+  hardware: varchar("hardware", { length: 64 }),
+  /** Device connection args (e.g., "type=b200,serial=31D9E9C") */
+  args: varchar("args", { length: 256 }),
+  /** Backend type (e.g., "uhd") */
+  backend: varchar("backend", { length: 32 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DeviceSelection = typeof deviceSelections.$inferSelect;
+export type InsertDeviceSelection = typeof deviceSelections.$inferInsert;
