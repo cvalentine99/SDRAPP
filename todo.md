@@ -596,3 +596,13 @@
 - [x] Add React Error Boundary with Sentry
 - [x] Add test error endpoint for verification
 - [x] Write unit tests for Sentry integration
+
+
+## Sentry Enhancements (Jan 1, 2026)
+
+- [x] Trigger test error to verify Sentry integration
+- [x] Configure Sentry alerts for error notifications (manual setup in Sentry dashboard)
+- [x] Add breadcrumbs for frequency changes
+- [x] Add breadcrumbs for recording actions
+- [x] Add breadcrumbs for scanner actions
+- [x] Add breadcrumbs for device configuration changes

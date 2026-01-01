@@ -11,6 +11,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { spawn } from "child_process";
 import { storagePut } from "./storage";
 import fs from "fs/promises";
+import { addBreadcrumb } from "./sentry";
 import {
   StartRecordingInputSchema,
   type Recording,
@@ -144,6 +145,20 @@ export const recordingRouter = router({
           fileSize,
         }).$returningId();
 
+        addBreadcrumb({
+          category: "sdr.recording",
+          message: `Recording started: ${filename}`,
+          level: "info",
+          data: {
+            recordingId: insertResult.id,
+            filename,
+            frequency,
+            sampleRate,
+            duration: input.duration,
+            action: "start",
+          },
+        });
+
         return {
           id: insertResult.id,
           filename,
@@ -151,6 +166,16 @@ export const recordingRouter = router({
           startTime: timestamp,
         };
       } catch (error) {
+        addBreadcrumb({
+          category: "sdr.recording",
+          message: `Recording failed: ${filename}`,
+          level: "error",
+          data: {
+            filename,
+            error: error instanceof Error ? error.message : String(error),
+            action: "error",
+          },
+        });
         console.error("Recording failed:", error);
         // Clean up temp files on error
         await fs.unlink(tmpPath).catch(() => {});
@@ -176,6 +201,17 @@ export const recordingRouter = router({
         }
 
         await db.delete(recordings).where(eq(recordings.id, input.id));
+        
+        addBreadcrumb({
+          category: "sdr.recording",
+          message: `Recording deleted: ${input.id}`,
+          level: "info",
+          data: {
+            recordingId: input.id,
+            action: "delete",
+          },
+        });
+        
         return { success: true };
       } catch (error) {
         console.error("Failed to delete recording:", error);

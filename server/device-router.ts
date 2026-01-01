@@ -8,6 +8,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { hardware } from "./hardware";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { addBreadcrumb } from "./sentry";
 import {
   SetFrequencyInputSchema,
   SetGainInputSchema,
@@ -121,7 +122,17 @@ export const deviceRouter = router({
   setFrequency: protectedProcedure
     .input(SetFrequencyInputSchema)
     .mutation(async ({ input }): Promise<{ frequency: number }> => {
+      const previousConfig = hardware.getConfig();
       await hardware.setFrequency(input.frequency);
+      addBreadcrumb({
+        category: "sdr.frequency",
+        message: `Frequency set to ${(input.frequency / 1e6).toFixed(3)} MHz`,
+        level: "info",
+        data: {
+          frequency: input.frequency,
+          previousFrequency: previousConfig.frequency,
+        },
+      });
       return { frequency: input.frequency };
     }),
 
@@ -133,7 +144,17 @@ export const deviceRouter = router({
   setGain: protectedProcedure
     .input(SetGainInputSchema)
     .mutation(async ({ input }): Promise<{ gain: number }> => {
+      const previousConfig = hardware.getConfig();
       await hardware.setGain(input.gain);
+      addBreadcrumb({
+        category: "sdr.gain",
+        message: `Gain set to ${input.gain} dB`,
+        level: "info",
+        data: {
+          gain: input.gain,
+          previousGain: previousConfig.gain,
+        },
+      });
       return { gain: input.gain };
     }),
 
@@ -145,7 +166,17 @@ export const deviceRouter = router({
   setSampleRate: protectedProcedure
     .input(SetSampleRateInputSchema)
     .mutation(async ({ input }): Promise<{ sampleRate: number }> => {
+      const previousConfig = hardware.getConfig();
       await hardware.setSampleRate(input.sampleRate);
+      addBreadcrumb({
+        category: "sdr.sampleRate",
+        message: `Sample rate set to ${(input.sampleRate / 1e6).toFixed(2)} MSPS`,
+        level: "info",
+        data: {
+          sampleRate: input.sampleRate,
+          previousSampleRate: previousConfig.sampleRate,
+        },
+      });
       return { sampleRate: input.sampleRate };
     }),
 

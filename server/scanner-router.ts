@@ -6,6 +6,7 @@
 import { router, protectedProcedure } from "./_core/trpc";
 import { spawn } from "child_process";
 import path from "path";
+import { addBreadcrumb } from "./sentry";
 import {
   ScanInputSchema,
   type ScanResponse,
@@ -25,6 +26,20 @@ export const scannerRouter = router({
       const sdrMode = process.env.SDR_MODE || "demo";
 
       const startTime = Date.now();
+
+      addBreadcrumb({
+        category: "sdr.scanner",
+        message: `Scan started: ${(startFreq / 1e6).toFixed(1)} - ${(stopFreq / 1e6).toFixed(1)} MHz`,
+        level: "info",
+        data: {
+          startFreq,
+          stopFreq,
+          stepSize,
+          dwellTime,
+          gain,
+          action: "start",
+        },
+      });
 
       if (sdrMode === "production") {
         // Production mode: spawn freq_scanner binary
@@ -113,6 +128,22 @@ export const scannerRouter = router({
       const endTime = Date.now();
       const peakResult = results.reduce((max, r) => r.power > max.power ? r : max, results[0]);
       const avgPower = results.reduce((sum, r) => sum + r.power, 0) / results.length;
+
+      const signalsFound = results.filter(r => r.power > -70).length;
+      
+      addBreadcrumb({
+        category: "sdr.scanner",
+        message: `Scan completed: ${signalsFound} signals found`,
+        level: "info",
+        data: {
+          signalsFound,
+          peakFrequency: peakResult?.frequency,
+          peakPower: peakResult?.power,
+          averagePower: avgPower,
+          duration: endTime - startTime,
+          action: "complete",
+        },
+      });
 
       return {
         results,
