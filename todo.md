@@ -697,3 +697,30 @@
 - [x] Subscribe UI to SDR state updates
 - [x] Implement button enable/disable based on state
 - [x] Ensure simulator/hardware parity
+
+
+## SDR Control Plane Hardening (Jan 6, 2026)
+
+### System Model Implementation
+- [x] Implement HardwareCapabilities layer (immutable device limits from SoapySDR)
+- [x] Implement OperationalPolicy layer (deployment constraints from env/config)
+- [x] Separate capability vs policy validation
+
+### Atomic Configuration
+- [x] Implement atomic applyConfig (validate → reject entirely OR apply entirely)
+- [x] Remove any partial configuration application paths
+- [x] Add configuration-time validation before hardware interaction
+
+### State Machine
+- [x] Implement explicit SDRState enum (Idle, Configured, Running, Reconfiguring)
+- [x] Reject unsafe reconfiguration while Running
+- [x] State transitions only at lifecycle boundaries
+
+### Audit Logging
+- [x] Implement structured, timestamped audit log for rejected configurations
+- [x] Make audit log append-only and non-blocking
+- [x] Log capability violations, policy violations, invalid state transitions
+
+### Simulator Parity
+- [x] Verify simulator uses same validation → applyConfig → state transitions
+- [x] Remove any simulator-only shortcuts
