@@ -660,4 +660,40 @@
 - [x] Add device_selections table to database schema
 - [x] Update device-list-router to persist selection to database
 - [x] Add tests for device selection persistence
-- [ ] Push changes to GitHub repository
+- [x] Push changes to GitHub repository
+
+
+## SDR Control Plane UI Wiring (Jan 1, 2026)
+
+### Lifecycle State Machine
+- [x] Create SDR lifecycle types (UNINITIALIZED, IDLE, CONFIGURING, STREAMING, ERROR)
+- [x] Create control plane event emitters
+- [x] Implement state subscription system
+
+### Device Dropdown (set_device_type)
+- [x] Wire device selector to emit set_device_type
+- [x] Show hardware availability status
+- [x] Ensure no auto-connect on selection
+
+### Connect/Disconnect Buttons
+- [x] Add explicit Connect button (UNINITIALIZED → IDLE)
+- [x] Add Disconnect button (any → UNINITIALIZED)
+- [x] Implement graceful fallback to simulator
+- [x] Add audit events (device_opened, device_closed)
+
+### RX Config Controls
+- [x] Wire frequency/gain/sample rate to set_config
+- [x] Add Apply Config button with validation
+- [x] Show validation errors and auto-corrections
+- [x] Disable config during STREAMING state
+
+### Start/Stop Stream (RX Only)
+- [x] Wire Start Stream button (IDLE → STREAMING)
+- [x] Wire Stop Stream button (STREAMING → IDLE)
+- [x] Add streaming indicator
+- [x] Add audit events (stream_started, stream_stopped)
+
+### State-Driven UI Binding
+- [x] Subscribe UI to SDR state updates
+- [x] Implement button enable/disable based on state
+- [x] Ensure simulator/hardware parity

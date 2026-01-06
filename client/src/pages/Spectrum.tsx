@@ -26,9 +26,15 @@ import {
   logNavigation,
 } from "@/lib/breadcrumbs";
 import { logger } from "@/lib/logger";
+import { SDRStatusBar } from "@/components/SDRControlPanel";
+import { useSDRControlPlane } from "@/hooks/useSDRControlPlane";
 
 export default function Spectrum() {
-  const [isRunning, setIsRunning] = useState(false);
+  // SDR Control Plane - authoritative state
+  const { state: sdrState, uiState, startStream, stopStream } = useSDRControlPlane();
+  
+  // Local UI state (derived from SDR state)
+  const isRunning = uiState.isStreaming;
   
   // WebSocket FFT streaming
   const { fftData, isConnected, connectionStatus, reconnect, fps: wsFps } = useWebSocketFFT();
@@ -93,16 +99,21 @@ export default function Spectrum() {
   });
   
   const handleStartStop = useCallback(() => {
-    const newState = !isRunning;
-    setIsRunning(newState);
-    logStreamingChange(newState ? "start" : "stop", {
-      frequency: parseFloat(frequency) * 1e6,
-    });
-    logger.spectrum.info(newState ? "Starting FFT streaming" : "Stopping FFT streaming");
-  }, [isRunning, frequency]);
+    if (isRunning) {
+      stopStream();
+      logStreamingChange("stop", { frequency: parseFloat(frequency) * 1e6 });
+    } else {
+      startStream();
+      logStreamingChange("start", { frequency: parseFloat(frequency) * 1e6 });
+    }
+  }, [isRunning, frequency, startStream, stopStream]);
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-4 p-4">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 p-4">
+      {/* SDR Status Bar */}
+      <SDRStatusBar />
+      
+      <div className="flex-1 flex gap-4">
       {/* Main Visualization Area */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Waterfall Display */}
@@ -351,6 +362,7 @@ export default function Spectrum() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
