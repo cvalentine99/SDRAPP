@@ -12,6 +12,7 @@ import Recording from "./pages/Recording";
 import Telemetry from "./pages/Telemetry";
 // AIAssistant page removed - now using global floating chat box
 import Settings from "./pages/Settings";
+import AdminPolicy from "./pages/AdminPolicy";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
         <Route path={"/telemetry"} component={Telemetry} />
         {/* AI Assistant is now a global floating chat box */}
         <Route path={"/settings"} component={Settings} />
+        <Route path={"/admin/policy"} component={AdminPolicy} />
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
         <Route component={NotFound} />

@@ -15,6 +15,7 @@ import {
   Radio,
   Search,
   Settings,
+  Shield,
   User,
   Waves,
   Zap,
@@ -124,6 +125,14 @@ export function SDRLayout({ children }: SDRLayoutProps) {
                       Settings
                     </Link>
                   </DropdownMenuItem>
+                  {user.role === "admin" && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/policy">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin: Policy
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
                     onClick={handleLogout}

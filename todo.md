@@ -724,3 +724,24 @@
 ### Simulator Parity
 - [x] Verify simulator uses same validation → applyConfig → state transitions
 - [x] Remove any simulator-only shortcuts
+
+
+## V2 Control Plane Integration (Jan 6, 2026)
+
+### Wire V2 Control Plane to UI
+- [x] Update useSDRControlPlane hook to use ProductionSDRControlPlane
+- [x] Add capability/policy state to hook return values
+- [x] Update SDRControlPanel to display device capabilities
+- [x] Add policy constraint indicators to config form
+
+### Policy Configuration Admin Panel
+- [x] Create PolicyConfigPanel component
+- [x] Add admin route for policy management
+- [x] Implement policy update tRPC endpoints
+- [x] Add policy validation and preview
+
+### Hardware Capability Discovery
+- [x] Create SoapySDR device query endpoint
+- [x] Implement dynamic capability loading
+- [x] Add device enumeration endpoint
+- [x] Cache discovered capabilitiesinitions when query fails

@@ -11,6 +11,7 @@ import { aiRouter } from "./ai-router";
 import { deviceListRouter } from "./device-list-router";
 import { bookmarkRouter } from "./bookmark-router";
 import { sdrControlRouter } from "./sdr-control-router";
+import { sdrControlV2Router } from "./sdr-control-v2-router";
 import { fetchSentryStats, submitSentryFeedback } from "./sentry-api";
 import { getLogs, getCategories, getLogStats, clearLogs, type LogLevel } from "./log-storage";
 import { getLoggerConfig, configureLogger } from "./logger";
@@ -101,6 +102,7 @@ export const appRouter = router({
   ai: aiRouter,
   bookmark: bookmarkRouter,
   sdrControl: sdrControlRouter,
+  sdrControlV2: sdrControlV2Router,
 });
 
 export type AppRouter = typeof appRouter;
