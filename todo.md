@@ -745,3 +745,14 @@
 - [x] Implement dynamic capability loading
 - [x] Add device enumeration endpoint
 - [x] Cache discovered capabilitiesinitions when query fails
+
+
+## Production Deployment Documentation (Jan 6, 2026)
+
+- [x] Create DEPLOYMENT.md with safe installation protocol
+- [x] Document Phase 1 - System Verification (read-only checks)
+- [x] Document Phase 2 - Dependency Installation (local only)
+- [x] Document Phase 3 - Application Build (frontend + backend)
+- [x] Document Phase 4 - Safe Startup (TX disabled, simulator mode)
+- [x] Document Phase 5 - Optional Hardware Enablement
+- [x] Add stop conditions and safety warnings
